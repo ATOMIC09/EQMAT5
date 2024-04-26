@@ -45,12 +45,12 @@ DMA_HandleTypeDef hdma_i2s2_ext_rx;
 DMA_HandleTypeDef hdma_spi2_tx;
 
 /* USER CODE BEGIN PV */
-#define BUFFER_SIZE 2048
-uint16_t adcData[BUFFER_SIZE];
-uint16_t dacData[BUFFER_SIZE];
-int isDataReady = 0;
-static volatile uint16_t *inBuff;
-static volatile uint16_t *outBuff;
+                          // #define BUFFER_SIZE 2048
+                          // uint16_t adcData[BUFFER_SIZE];
+                          // uint16_t dacData[BUFFER_SIZE];
+                          // int isDataReady = 0;
+                          // static volatile uint16_t *inBuff;
+                          // static volatile uint16_t *outBuff;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -59,8 +59,11 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_I2S2_Init(void);
 /* USER CODE BEGIN PFP */
-void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s);
-void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s);
+float l_a0, l_a1, l_a2, l_b1, l_b2, lin_z1, lin_z2, lout_z1, lout_z2;
+float r_a0, r_a1, r_a2, r_b1, r_b2, rin_z1, rin_z2, rout_z1, rout_z2;
+
+uint16_t rxBuf[8];
+uint16_t txBuf[8];
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -100,7 +103,22 @@ int main(void)
   MX_DMA_Init();
   MX_I2S2_Init();
   /* USER CODE BEGIN 2 */
-  HAL_I2SEx_TransmitReceive_DMA (&hi2s2, adcData, dacData, 4);
+  HAL_I2SEx_TransmitReceive_DMA (&hi2s2, txBuf, rxBuf, 4);
+
+  //left-channel, High-Pass, 1kHz, fs=96kHz, q=0.7
+  l_a0 = 0.9543457485325094f;
+  l_a1 = -1.9086914970650188f;
+  l_a2 = 0.9543457485325094f;
+  l_b1 = -1.9066459797557103f;
+  l_b2 = 0.9107370143743273f;
+
+  //right-channel, Low-Pass, 1kHz, fs)96 kHz, q=0.7
+  r_a0 = 0.0010227586546542474f;
+  r_a1 = 0.002045517309308495f;
+  r_a2 = 0.0010227586546542474f;
+  r_b1 = -1.9066459797557103f;
+  r_b2 = 0.9107370143743273f;
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -110,13 +128,13 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  if (isDataReady){
-      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, 1);
+	  // if (isDataReady){
+      // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, 1);
 //      isDataReady = 0;
-	  	}
-	  else {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, 0);
-	}
+	  	// }
+	  // else {
+		  // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, 0);
+	// }
 
   }
   /* USER CODE END 3 */
@@ -252,15 +270,96 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s){
-	inBuff = &adcData[BUFFER_SIZE/2];
-	outBuff = &dacData[BUFFER_SIZE/2];
-	isDataReady = 1;
+                            // void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s){
+                            // 	inBuff = &adcData[BUFFER_SIZE/2];
+                            // 	outBuff = &dacData[BUFFER_SIZE/2];
+                            // 	isDataReady = 1;
+                            // }
+                            // void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
+                            // 	inBuff = adcData;
+                            // 	outBuff = dacData;
+                            // 	isDataReady = 1;
+                            // }
+                            int Calc_IIR_Left (int inSample) {
+	float inSampleF = (float)inSample;
+	float outSampleF =
+			l_a0 * inSampleF
+			+ l_a1 * lin_z1
+			+ l_a2 * lin_z2
+			- l_b1 * lout_z1
+			- l_b2 * lout_z2;
+	lin_z2 = lin_z1;
+	lin_z1 = inSampleF;
+	lout_z2 = lout_z1;
+	lout_z1 = outSampleF;
+
+	return (int) outSampleF;
 }
+
+int Calc_IIR_Right (int inSample) {
+	float inSampleF = (float)inSample;
+	float outSampleF =
+			r_a0 * inSampleF
+			+ r_a1 * rin_z1
+			+ r_a2 * rin_z2
+			- r_b1 * rout_z1
+			- r_b2 * rout_z2;
+	rin_z2 = rin_z1;
+	rin_z1 = inSampleF;
+	rout_z2 = rout_z1;
+	rout_z1 = outSampleF;
+
+	return (int) outSampleF;
+}
+
 void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
-	inBuff = adcData;
-	outBuff = dacData;
-	isDataReady = 1;
+
+	//restore signed 24 bit sample from 16-bit buffers
+	int lSample = (int) (rxBuf[0]<<16)|rxBuf[1];
+	int rSample = (int) (rxBuf[2]<<16)|rxBuf[3];
+
+	// divide by 2 (rightshift) -> -3dB per sample
+	lSample = lSample>>1;
+	rSample = rSample>>1;
+
+	//sum to mono
+	lSample = rSample + lSample;
+	rSample = lSample;
+
+	//run HP on left channel and LP on right channel
+	lSample = Calc_IIR_Left(lSample);
+	rSample = Calc_IIR_Right(rSample);
+
+	//restore to buffer
+	txBuf[0] = (lSample>>16)&0xFFFF;
+	txBuf[1] = lSample&0xFFFF;
+	txBuf[2] = (rSample>>16)&0xFFFF;
+	txBuf[3] = rSample&0xFFFF;
+}
+
+void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s){
+
+	//restore signed 24 bit sample from 16-bit buffers
+	int lSample = (int) (rxBuf[4]<<16)|rxBuf[5];
+	int rSample = (int) (rxBuf[6]<<16)|rxBuf[7];
+
+	// divide by 2 (rightshift) -> -3dB per sample
+	lSample = lSample>>1;
+	rSample = rSample>>1;
+
+	//sum to mono
+	lSample = rSample + lSample;
+	rSample = lSample;
+
+	//run HP on left channel and LP on right channel
+	lSample = Calc_IIR_Left(lSample);
+	rSample = Calc_IIR_Right(rSample);
+
+	//restore to buffer
+	txBuf[4] = (lSample>>16)&0xFFFF;
+	txBuf[5] = lSample&0xFFFF;
+	txBuf[6] = (rSample>>16)&0xFFFF;
+	txBuf[7] = rSample&0xFFFF;
 }
 /* USER CODE END 4 */
 
