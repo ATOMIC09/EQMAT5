@@ -62,8 +62,8 @@ static void MX_I2S2_Init(void);
 float l_a0, l_a1, l_a2, l_b1, l_b2, lin_z1, lin_z2, lout_z1, lout_z2;
 float r_a0, r_a1, r_a2, r_b1, r_b2, rin_z1, rin_z2, rout_z1, rout_z2;
 
-uint16_t rxBuf[8];
-uint16_t txBuf[8];
+uint16_t rxBuf[256];
+uint16_t txBuf[256];
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -280,7 +280,7 @@ static void MX_GPIO_Init(void)
                             // 	outBuff = dacData;
                             // 	isDataReady = 1;
                             // }
-                            int Calc_IIR_Left (int inSample) {
+  int Calc_IIR_Left (int inSample) {
 	float inSampleF = (float)inSample;
 	float outSampleF =
 			l_a0 * inSampleF
@@ -323,12 +323,12 @@ void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
 	rSample = rSample>>1;
 
 	//sum to mono
-	lSample = rSample + lSample;
-	rSample = lSample;
+	// lSample = rSample + lSample;
+	// rSample = lSample;
 
 	//run HP on left channel and LP on right channel
-	lSample = Calc_IIR_Left(lSample);
-	rSample = Calc_IIR_Right(rSample);
+	// lSample = Calc_IIR_Left(lSample);
+	// rSample = Calc_IIR_Right(rSample);
 
 	//restore to buffer
 	txBuf[0] = (lSample>>16)&0xFFFF;
@@ -348,12 +348,12 @@ void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s){
 	rSample = rSample>>1;
 
 	//sum to mono
-	lSample = rSample + lSample;
-	rSample = lSample;
+	// lSample = rSample + lSample;
+	// rSample = lSample;
 
 	//run HP on left channel and LP on right channel
-	lSample = Calc_IIR_Left(lSample);
-	rSample = Calc_IIR_Right(rSample);
+	// lSample = Calc_IIR_Left(lSample);
+	// rSample = Calc_IIR_Right(rSample);
 
 	//restore to buffer
 	txBuf[4] = (lSample>>16)&0xFFFF;

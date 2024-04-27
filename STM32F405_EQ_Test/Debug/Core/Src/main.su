@@ -3,7 +3,7 @@
 ../Core/Src/main.c:193:13:MX_I2S2_Init	8	static
 ../Core/Src/main.c:225:13:MX_DMA_Init	16	static
 ../Core/Src/main.c:246:13:MX_GPIO_Init	48	static
-../Core/Src/main.c:283:33:Calc_IIR_Left	24	static
+../Core/Src/main.c:283:7:Calc_IIR_Left	24	static
 ../Core/Src/main.c:299:5:Calc_IIR_Right	24	static
 ../Core/Src/main.c:315:6:HAL_I2SEx_TxRxHalfCpltCallback	24	static
 ../Core/Src/main.c:340:6:HAL_I2SEx_TxRxCpltCallback	24	static
