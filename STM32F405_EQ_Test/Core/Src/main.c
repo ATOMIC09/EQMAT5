@@ -281,6 +281,7 @@ static void MX_GPIO_Init(void)
                             // 	isDataReady = 1;
                             // }
   int Calc_IIR_Left (int inSample) {
+    // Cal High-Pass IIR filter
 	float inSampleF = (float)inSample;
 	float outSampleF =
 			l_a0 * inSampleF
@@ -297,6 +298,7 @@ static void MX_GPIO_Init(void)
 }
 
 int Calc_IIR_Right (int inSample) {
+    // Cal Low-Pass IIR filter
 	float inSampleF = (float)inSample;
 	float outSampleF =
 			r_a0 * inSampleF
@@ -311,6 +313,8 @@ int Calc_IIR_Right (int inSample) {
 
 	return (int) outSampleF;
 }
+
+// int Calc_IIR_NotchFilter_Left
 
 void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
 
