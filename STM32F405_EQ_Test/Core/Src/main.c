@@ -105,6 +105,17 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_I2SEx_TransmitReceive_DMA (&hi2s2, txBuf, rxBuf, 4);
 
+  // Low, Fc=50Hz, Fs=96kHz, q=0.7071
+  l_a0 = 0.0000026711181320911584f;
+  l_a1 = 0.000005342236264182317f;
+  l_a2 = 0.0000026711181320911584f;
+  l_b1 = -1.9953719609930045f;
+  l_b2 = 0.9953826454655329f;
+
+  // Low-mid, Fc=200Hz, Fs=96kHz, q=0.7071
+  // How tf !?
+
+
   //left-channel, High-Pass, 1kHz, fs=96kHz, q=0.7
   l_a0 = 0.9543457485325094f;
   l_a1 = -1.9086914970650188f;
