@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include <stdio.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -59,11 +60,60 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_I2S2_Init(void);
 /* USER CODE BEGIN PFP */
-float l_a0, l_a1, l_a2, l_b1, l_b2, lin_z1, lin_z2, lout_z1, lout_z2;
-float r_a0, r_a1, r_a2, r_b1, r_b2, rin_z1, rin_z2, rout_z1, rout_z2;
+// float l_a0, l_a1, l_a2, l_b1, l_b2, lin_z1, lin_z2, lout_z1, lout_z2;
+// float r_a0, r_a1, r_a2, r_b1, r_b2, rin_z1, rin_z2, rout_z1, rout_z2;
 
 uint16_t rxBuf[256];
 uint16_t txBuf[256];
+
+// Define the FilterCoeffs struct to hold filter coefficients
+typedef struct {
+  float a0;
+  float a1;
+  float a2;
+  float b1;
+  float b2;
+} FilterCoeffs;
+
+// Define filter band selection constants (assuming integer values)
+#define LOW_SHELF_BAND 1
+#define LOW_MID_BAND 2
+#define MID_BAND 3
+#define HIGH_MID_BAND 4
+#define HIGH_SHELF_BAND 5
+
+/* Filter Coefficients (replace with actual values) */
+const FilterCoeffs lowShelfCoeffs = {1.0f, -1.995372f, 0.995383f, -1.995372f, 0.995383f};
+const FilterCoeffs lowMidCoeffs = {0.009171f, 0.0f, -0.009171f, -1.981488f, 0.981658f};
+const FilterCoeffs midBandCoeffs = {0.0648168f, 0.0f, -0.0648168f, -1.861360f, 0.870366f};
+const FilterCoeffs highMidCoeffs = {0.1212275f, 0.0f, -0.1212275f, -1.723774f, 0.757545f};
+const FilterCoeffs highShelfCoeffs = {1.0f, -1.109229f, 0.398152f, -1.109229f, 0.398152f};
+
+// Left channel filter state variables
+float lin_z1;
+float lin_z2;
+float lout_z1;
+float lout_z2;
+
+// Right channel filter state variables
+float rin_z1;
+float rin_z2;
+float rout_z1;
+float rout_z2;
+
+// Placeholder for gain values from MATLAB GUI (replace with actual implementation)
+float gainLowShelf = 1.0f;
+float gainLowMid = 1.0f;
+float gainMid = 1.0f;
+float gainHighMid = 1.0f;
+float gainHighShelf = 1.0f;
+
+int selectedBand = LOW_SHELF_BAND;  // Change this value to select the desired filter band
+
+
+// Array to store filtered outputs for each band (left and right channels)
+float filteredOutputs[10];
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -106,29 +156,29 @@ int main(void)
   HAL_I2SEx_TransmitReceive_DMA (&hi2s2, txBuf, rxBuf, 4);
 
   // Low, Fc=50Hz, Fs=96kHz, q=0.7071
-  l_a0 = 0.0000026711181320911584f;
-  l_a1 = 0.000005342236264182317f;
-  l_a2 = 0.0000026711181320911584f;
-  l_b1 = -1.9953719609930045f;
-  l_b2 = 0.9953826454655329f;
+  // l_a0 = 0.0000026711181320911584f;
+  // l_a1 = 0.000005342236264182317f;
+  // l_a2 = 0.0000026711181320911584f;
+  // l_b1 = -1.9953719609930045f;
+  // l_b2 = 0.9953826454655329f;
 
   // Low-mid, Fc=200Hz, Fs=96kHz, q=0.7071
   // How tf !?
 
 
   //left-channel, High-Pass, 1kHz, fs=96kHz, q=0.7
-  l_a0 = 0.9543457485325094f;
-  l_a1 = -1.9086914970650188f;
-  l_a2 = 0.9543457485325094f;
-  l_b1 = -1.9066459797557103f;
-  l_b2 = 0.9107370143743273f;
+  // l_a0 = 0.9543457485325094f;
+  // l_a1 = -1.9086914970650188f;
+  // l_a2 = 0.9543457485325094f;
+  // l_b1 = -1.9066459797557103f;
+  // l_b2 = 0.9107370143743273f;
 
   //right-channel, Low-Pass, 1kHz, fs)96 kHz, q=0.7
-  r_a0 = 0.0010227586546542474f;
-  r_a1 = 0.002045517309308495f;
-  r_a2 = 0.0010227586546542474f;
-  r_b1 = -1.9066459797557103f;
-  r_b2 = 0.9107370143743273f;
+  // r_a0 = 0.0010227586546542474f;
+  // r_a1 = 0.002045517309308495f;
+  // r_a2 = 0.0010227586546542474f;
+  // r_b1 = -1.9066459797557103f;
+  // r_b2 = 0.9107370143743273f;
 
   /* USER CODE END 2 */
 
@@ -281,51 +331,40 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-                            // void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s){
-                            // 	inBuff = &adcData[BUFFER_SIZE/2];
-                            // 	outBuff = &dacData[BUFFER_SIZE/2];
-                            // 	isDataReady = 1;
-                            // }
-                            // void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
-                            // 	inBuff = adcData;
-                            // 	outBuff = dacData;
-                            // 	isDataReady = 1;
-                            // }
-  int Calc_IIR_Left (int inSample) {
-    // Cal High-Pass IIR filter
-	float inSampleF = (float)inSample;
-	float outSampleF =
-			l_a0 * inSampleF
-			+ l_a1 * lin_z1
-			+ l_a2 * lin_z2
-			- l_b1 * lout_z1
-			- l_b2 * lout_z2;
-	lin_z2 = lin_z1;
-	lin_z1 = inSampleF;
-	lout_z2 = lout_z1;
-	lout_z1 = outSampleF;
 
-	return (int) outSampleF;
+// Function for left channel filtering (replace with your actual implementation)
+int Calc_IIR_Left(int inSample, const FilterCoeffs *coeffs) {
+  float inSampleF = (float)inSample;
+  float outSampleF =
+      coeffs->a0 * inSampleF
+      + coeffs->a1 * lin_z1
+      + coeffs->a2 * lin_z2
+      - coeffs->b1 * lout_z1
+      - coeffs->b2 * lout_z2;
+  lin_z2 = lin_z1;
+  lin_z1 = inSampleF;
+  lout_z2 = lout_z1;
+  lout_z1 = outSampleF;
+
+  return (int) outSampleF;
 }
 
-int Calc_IIR_Right (int inSample) {
-    // Cal Low-Pass IIR filter
-	float inSampleF = (float)inSample;
-	float outSampleF =
-			r_a0 * inSampleF
-			+ r_a1 * rin_z1
-			+ r_a2 * rin_z2
-			- r_b1 * rout_z1
-			- r_b2 * rout_z2;
-	rin_z2 = rin_z1;
-	rin_z1 = inSampleF;
-	rout_z2 = rout_z1;
-	rout_z1 = outSampleF;
+// Function for right channel filtering (replace with your actual implementation)
+int Calc_IIR_Right(int inSample, const FilterCoeffs *coeffs) {
+  float inSampleF = (float)inSample;
+  float outSampleF =
+      coeffs->a0 * inSampleF
+      + coeffs->a1 * rin_z1
+      + coeffs->a2 * rin_z2
+      - coeffs->b1 * rout_z1
+      - coeffs->b2 * rout_z2;
+  rin_z2 = rin_z1;
+  rin_z1 = inSampleF;
+  rout_z2 = rout_z1;
+  rout_z1 = outSampleF;
 
-	return (int) outSampleF;
+  return (int) outSampleF;
 }
-
-// int Calc_IIR_NotchFilter_Left
 
 void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
 
@@ -334,8 +373,8 @@ void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
 	int rSample = (int) (rxBuf[2]<<16)|rxBuf[3];
 
 	// divide by 2 (rightshift) -> -3dB per sample
-	lSample = lSample>>1;
-	rSample = rSample>>1;
+	// lSample = lSample>>1;
+	// rSample = rSample>>1;
 
 	//sum to mono
 	// lSample = rSample + lSample;
@@ -344,6 +383,44 @@ void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
 	//run HP on left channel and LP on right channel
 	// lSample = Calc_IIR_Left(lSample);
 	// rSample = Calc_IIR_Right(rSample);
+
+  filteredOutputs[0] = Calc_IIR_Left(lSample, &lowShelfCoeffs);
+  filteredOutputs[1] = Calc_IIR_Right(rSample, &lowShelfCoeffs);
+  filteredOutputs[2] = Calc_IIR_Left(lSample, &lowMidCoeffs);
+  filteredOutputs[3] = Calc_IIR_Right(rSample, &lowMidCoeffs);
+  filteredOutputs[4] = Calc_IIR_Left(lSample, &midBandCoeffs);
+  filteredOutputs[5] = Calc_IIR_Right(rSample, &midBandCoeffs);
+  filteredOutputs[6] = Calc_IIR_Left(lSample, &highMidCoeffs);
+  filteredOutputs[7] = Calc_IIR_Right(rSample, &highMidCoeffs);
+  filteredOutputs[8] = Calc_IIR_Left(lSample, &highShelfCoeffs);
+  filteredOutputs[9] = Calc_IIR_Right(rSample, &highShelfCoeffs);
+
+  // Apply gain based on the selected band (fixed for testing in this example)
+  switch (selectedBand) {
+    case LOW_SHELF_BAND:
+      lSample = filteredOutputs[0] * gainLowShelf;
+      rSample = filteredOutputs[1] * gainLowShelf;
+      break;
+    case LOW_MID_BAND:
+      lSample = filteredOutputs[2] * gainLowMid;
+      rSample = filteredOutputs[3] * gainLowMid;
+      break;
+    case MID_BAND:
+      lSample = filteredOutputs[4] * gainMid;
+      rSample = filteredOutputs[5] * gainMid;
+      break;
+    case HIGH_MID_BAND:
+      lSample = filteredOutputs[6] * gainHighMid;
+      rSample = filteredOutputs[7] * gainHighMid;
+      break;
+    case HIGH_SHELF_BAND:
+      lSample = filteredOutputs[8] * gainHighShelf;
+      rSample = filteredOutputs[9] * gainHighShelf;
+      break;
+    default:
+      // Handle unexpected band selection (optional)
+      break;
+  }
 
 	//restore to buffer
 	txBuf[0] = (lSample>>16)&0xFFFF;
@@ -359,8 +436,8 @@ void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s){
 	int rSample = (int) (rxBuf[6]<<16)|rxBuf[7];
 
 	// divide by 2 (rightshift) -> -3dB per sample
-	lSample = lSample>>1;
-	rSample = rSample>>1;
+	// lSample = lSample>>1;
+	// rSample = rSample>>1;
 
 	//sum to mono
 	// lSample = rSample + lSample;
@@ -369,6 +446,44 @@ void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s){
 	//run HP on left channel and LP on right channel
 	// lSample = Calc_IIR_Left(lSample);
 	// rSample = Calc_IIR_Right(rSample);
+
+  filteredOutputs[0] = Calc_IIR_Left(lSample, &lowShelfCoeffs);
+  filteredOutputs[1] = Calc_IIR_Right(rSample, &lowShelfCoeffs);
+  filteredOutputs[2] = Calc_IIR_Left(lSample, &lowMidCoeffs);
+  filteredOutputs[3] = Calc_IIR_Right(rSample, &lowMidCoeffs);
+  filteredOutputs[4] = Calc_IIR_Left(lSample, &midBandCoeffs);
+  filteredOutputs[5] = Calc_IIR_Right(rSample, &midBandCoeffs);
+  filteredOutputs[6] = Calc_IIR_Left(lSample, &highMidCoeffs);
+  filteredOutputs[7] = Calc_IIR_Right(rSample, &highMidCoeffs);
+  filteredOutputs[8] = Calc_IIR_Left(lSample, &highShelfCoeffs);
+  filteredOutputs[9] = Calc_IIR_Right(rSample, &highShelfCoeffs);
+
+  // Apply gain based on the selected band (fixed for testing in this example)
+  switch (selectedBand) {
+    case LOW_SHELF_BAND:
+      lSample = filteredOutputs[0] * gainLowShelf;
+      rSample = filteredOutputs[1] * gainLowShelf;
+      break;
+    case LOW_MID_BAND:
+      lSample = filteredOutputs[2] * gainLowMid;
+      rSample = filteredOutputs[3] * gainLowMid;
+      break;
+    case MID_BAND:
+      lSample = filteredOutputs[4] * gainMid;
+      rSample = filteredOutputs[5] * gainMid;
+      break;
+    case HIGH_MID_BAND:
+      lSample = filteredOutputs[6] * gainHighMid;
+      rSample = filteredOutputs[7] * gainHighMid;
+      break;
+    case HIGH_SHELF_BAND:
+      lSample = filteredOutputs[8] * gainHighShelf;
+      rSample = filteredOutputs[9] * gainHighShelf;
+      break;
+    default:
+      // Handle unexpected band selection (optional)
+      break;
+  }
 
 	//restore to buffer
 	txBuf[4] = (lSample>>16)&0xFFFF;
