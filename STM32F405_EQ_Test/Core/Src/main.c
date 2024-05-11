@@ -104,16 +104,11 @@ float rout_z2;
 // Placeholder for gain values from MATLAB GUI (replace with actual implementation)
 float gainLowShelf = 1.0f;
 float gainLowMid = 1.0f;
-float gainMid = 0.0f;
+float gainMid = 1.0f;
 float gainHighMid = 1.0f;
 float gainHighShelf = 1.0f;
 
 // int selectedBand = LOW_SHELF_BAND;  // Change this value to select the desired filter band
-
-
-// Array to store filtered outputs for each band (left and right channels)
-float filteredOutputsHalf[10];
-float filteredOutputs[10];
 
 /* USER CODE END PFP */
 
