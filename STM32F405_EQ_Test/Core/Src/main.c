@@ -63,8 +63,8 @@ static void MX_I2S2_Init(void);
 // float l_a0, l_a1, l_a2, l_b1, l_b2, lin_z1, lin_z2, lout_z1, lout_z2;
 // float r_a0, r_a1, r_a2, r_b1, r_b2, rin_z1, rin_z2, rout_z1, rout_z2;
 
-uint16_t rxBuf[256];
-uint16_t txBuf[256];
+uint16_t rxBuf[1024];
+uint16_t txBuf[1024];
 
 // Define the FilterCoeffs struct to hold filter coefficients
 typedef struct {
@@ -104,7 +104,7 @@ float rout_z2;
 // Placeholder for gain values from MATLAB GUI (replace with actual implementation)
 float gainLowShelf = 1.0f;
 float gainLowMid = 1.0f;
-float gainMid = 1.0f;
+float gainMid = 0.0f;
 float gainHighMid = 1.0f;
 float gainHighShelf = 1.0f;
 
@@ -368,112 +368,65 @@ int Calc_IIR_Right(int inSample, const FilterCoeffs *coeffs) {
 }
 
 void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
+    // Restore signed 24-bit sample from 16-bit buffers
+    int lSample = (int) (rxBuf[0]<<16) | rxBuf[1];
+    int rSample = (int) (rxBuf[2]<<16) | rxBuf[3];
 
-	//restore signed 24 bit sample from 16-bit buffers
-	int lSample = (int) (rxBuf[0]<<16)|rxBuf[1];
-	int rSample = (int) (rxBuf[2]<<16)|rxBuf[3];
+    // multiply by 2 (leftshift) -> +3dB per sample (don't use, it will make a *click* noise)
+    // lSample = lSample<<1;
+    // rSample = rSample<<1;
+    
+    // Run filtering for each band on the left and right channels
+    int filteredOutputs[10];
 
-	// divide by 2 (rightshift) -> -3dB per sample
-	// lSample = lSample>>1;
-	// rSample = rSample>>1;
+    filteredOutputs[0] = Calc_IIR_Left(lSample, &lowShelfCoeffs) * gainLowShelf;
+    filteredOutputs[1] = Calc_IIR_Right(rSample, &lowShelfCoeffs) * gainLowShelf;
+    filteredOutputs[2] = Calc_IIR_Left(lSample, &lowMidCoeffs) * gainLowMid;
+    filteredOutputs[3] = Calc_IIR_Right(rSample, &lowMidCoeffs) * gainLowMid;
+    filteredOutputs[4] = Calc_IIR_Left(lSample, &midBandCoeffs) * gainMid;
+    filteredOutputs[5] = Calc_IIR_Right(rSample, &midBandCoeffs) * gainMid;
+    filteredOutputs[6] = Calc_IIR_Left(lSample, &highMidCoeffs) * gainHighMid;
+    filteredOutputs[7] = Calc_IIR_Right(rSample, &highMidCoeffs) * gainHighMid;
+    filteredOutputs[8] = Calc_IIR_Left(lSample, &highShelfCoeffs) * gainHighShelf;
+    filteredOutputs[9] = Calc_IIR_Right(rSample, &highShelfCoeffs) * gainHighShelf;
 
-	//sum to mono
-	// lSample = rSample + lSample;
-	// rSample = lSample;
-
-	//run HP on left channel and LP on right channel
-	// lSample = Calc_IIR_Left(lSample);
-	// rSample = Calc_IIR_Right(rSample);
-
-  filteredOutputsHalf[0] = Calc_IIR_Left(lSample, &lowShelfCoeffs);
-  filteredOutputsHalf[1] = Calc_IIR_Right(rSample, &lowShelfCoeffs);
-  filteredOutputsHalf[2] = Calc_IIR_Left(lSample, &lowMidCoeffs);
-  filteredOutputsHalf[3] = Calc_IIR_Right(rSample, &lowMidCoeffs);
-  filteredOutputsHalf[4] = Calc_IIR_Left(lSample, &midBandCoeffs);
-  filteredOutputsHalf[5] = Calc_IIR_Right(rSample, &midBandCoeffs);
-  filteredOutputsHalf[6] = Calc_IIR_Left(lSample, &highMidCoeffs);
-  filteredOutputsHalf[7] = Calc_IIR_Right(rSample, &highMidCoeffs);
-  filteredOutputsHalf[8] = Calc_IIR_Left(lSample, &highShelfCoeffs);
-  filteredOutputsHalf[9] = Calc_IIR_Right(rSample, &highShelfCoeffs);
-
-  // Apply gain based on the selected band (fixed for testing in this example)
-
-  lSample = filteredOutputsHalf[0] * gainLowShelf;
-  rSample = filteredOutputsHalf[1] * gainLowShelf;
-
-  lSample = filteredOutputsHalf[2] * gainLowMid;
-  rSample = filteredOutputsHalf[3] * gainLowMid;
-
-  lSample = filteredOutputsHalf[4] * gainMid;
-  rSample = filteredOutputsHalf[5] * gainMid;
-
-  lSample = filteredOutputsHalf[6] * gainHighMid;
-  rSample = filteredOutputsHalf[7] * gainHighMid;
-
-  lSample = filteredOutputsHalf[8] * gainHighShelf;
-  rSample = filteredOutputsHalf[9] * gainHighShelf;
-
-  
-
-	//restore to buffer
-	txBuf[0] = (lSample>>16)&0xFFFF;
-	txBuf[1] = lSample&0xFFFF;
-	txBuf[2] = (rSample>>16)&0xFFFF;
-	txBuf[3] = rSample&0xFFFF;
+    // Restore to buffer
+    for (int i = 0; i < 10; ++i) {
+        txBuf[i * 2] = (int)(filteredOutputs[i] >> 16) & 0xFFFF;
+        txBuf[i * 2 + 1] = (int)filteredOutputs[i] & 0xFFFF;
+    }
 }
 
 void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s){
+    // Restore signed 24-bit sample from 16-bit buffers
+    int lSample = (int) (rxBuf[4]<<16) | rxBuf[5];
+    int rSample = (int) (rxBuf[6]<<16) | rxBuf[7];
 
-	//restore signed 24 bit sample from 16-bit buffers
-	// int lSample = (int) (rxBuf[4]<<16)|rxBuf[5];
-	// int rSample = (int) (rxBuf[6]<<16)|rxBuf[7];
+    // multiply by 2 (leftshift) -> +3dB per sample (don't use, it will make a *click* noise)
+    // lSample = lSample<<1;
+    // rSample = rSample<<1;
 
-	// divide by 2 (rightshift) -> -3dB per sample
-	// lSample = lSample>>1;
-	// rSample = rSample>>1;
+    // Run filtering for each band on the left and right channels
+    int filteredOutputs[10];
 
-	//sum to mono
-	// lSample = rSample + lSample;
-	// rSample = lSample;
+    filteredOutputs[0] = Calc_IIR_Left(lSample, &lowShelfCoeffs) * gainLowShelf;
+    filteredOutputs[1] = Calc_IIR_Right(rSample, &lowShelfCoeffs) * gainLowShelf;
+    filteredOutputs[2] = Calc_IIR_Left(lSample, &lowMidCoeffs) * gainLowMid;
+    filteredOutputs[3] = Calc_IIR_Right(rSample, &lowMidCoeffs) * gainLowMid;
+    filteredOutputs[4] = Calc_IIR_Left(lSample, &midBandCoeffs) * gainMid;
+    filteredOutputs[5] = Calc_IIR_Right(rSample, &midBandCoeffs) * gainMid;
+    filteredOutputs[6] = Calc_IIR_Left(lSample, &highMidCoeffs) * gainHighMid;
+    filteredOutputs[7] = Calc_IIR_Right(rSample, &highMidCoeffs) * gainHighMid;
+    filteredOutputs[8] = Calc_IIR_Left(lSample, &highShelfCoeffs) * gainHighShelf;
+    filteredOutputs[9] = Calc_IIR_Right(rSample, &highShelfCoeffs) * gainHighShelf;
 
-	//run HP on left channel and LP on right channel
-	// lSample = Calc_IIR_Left(lSample);
-	// rSample = Calc_IIR_Right(rSample);
-
-  // filteredOutputs[0] = Calc_IIR_Left(lSample, &lowShelfCoeffs);
-  // filteredOutputs[1] = Calc_IIR_Right(rSample, &lowShelfCoeffs);
-  // filteredOutputs[2] = Calc_IIR_Left(lSample, &lowMidCoeffs);
-  // filteredOutputs[3] = Calc_IIR_Right(rSample, &lowMidCoeffs);
-  // filteredOutputs[4] = Calc_IIR_Left(lSample, &midBandCoeffs);
-  // filteredOutputs[5] = Calc_IIR_Right(rSample, &midBandCoeffs);
-  // filteredOutputs[6] = Calc_IIR_Left(lSample, &highMidCoeffs);
-  // filteredOutputs[7] = Calc_IIR_Right(rSample, &highMidCoeffs);
-  // filteredOutputs[8] = Calc_IIR_Left(lSample, &highShelfCoeffs);
-  // filteredOutputs[9] = Calc_IIR_Right(rSample, &highShelfCoeffs);
-
-  // Apply gain based on the selected band (fixed for testing in this example)
-  // lSample = filteredOutputs[0] * gainLowShelf;
-  // rSample = filteredOutputs[1] * gainLowShelf;
-
-  // lSample = filteredOutputs[2] * gainLowMid;
-  // rSample = filteredOutputs[3] * gainLowMid;
-
-  // lSample = filteredOutputs[4] * gainMid;
-  // rSample = filteredOutputs[5] * gainMid;
-
-  // lSample = filteredOutputs[6] * gainHighMid;
-  // rSample = filteredOutputs[7] * gainHighMid;
-
-  // lSample = filteredOutputs[8] * gainHighShelf;
-  // rSample = filteredOutputs[9] * gainHighShelf;
-
-
-	//restore to buffer
-	// txBuf[4] = (lSample>>16)&0xFFFF;
-	// txBuf[5] = lSample&0xFFFF;
-	// txBuf[6] = (rSample>>16)&0xFFFF;
-	// txBuf[7] = rSample&0xFFFF;
+    // Restore to buffer
+    for (int i = 0; i < 10; ++i) {
+        txBuf[i * 2 + 4] = (int)(filteredOutputs[i] >> 16) & 0xFFFF;
+        txBuf[i * 2 + 5] = (int)filteredOutputs[i] & 0xFFFF;
+    }
 }
+
 /* USER CODE END 4 */
 
 /**
