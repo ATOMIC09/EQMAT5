@@ -22,6 +22,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdint.h>
+#include "peaking_filter.h"
 
 /* USER CODE END Includes */
 
@@ -63,8 +65,8 @@ static void MX_I2S2_Init(void);
 // float l_a0, l_a1, l_a2, l_b1, l_b2, lin_z1, lin_z2, lout_z1, lout_z2;
 // float r_a0, r_a1, r_a2, r_b1, r_b2, rin_z1, rin_z2, rout_z1, rout_z2;
 
-uint16_t rxBuf[1024];
-uint16_t txBuf[1024];
+uint16_t rxBuf[256];
+uint16_t txBuf[256];
 
 // Define the FilterCoeffs struct to hold filter coefficients
 typedef struct {
@@ -74,6 +76,9 @@ typedef struct {
   float b1;
   float b2;
 } FilterCoeffs;
+
+// Define filt
+peaking_filter filt;
 
 // Define filter band selection constants (assuming integer values)
 // #define LOW_SHELF_BAND 1
@@ -149,6 +154,8 @@ int main(void)
   MX_DMA_Init();
   MX_I2S2_Init();
   /* USER CODE BEGIN 2 */
+  peaking_filter_init(&filt, 96000.0f);
+  peaking_filter_set_params(&filt, 500.0f, 100.0f, 0.1f);
   HAL_I2SEx_TransmitReceive_DMA (&hi2s2, txBuf, rxBuf, 4);
 
   // Low, Fc=50Hz, Fs=96kHz, q=0.7071
@@ -367,29 +374,39 @@ void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
     int lSample = (int) (rxBuf[0]<<16) | rxBuf[1];
     int rSample = (int) (rxBuf[2]<<16) | rxBuf[3];
 
+    // test peaking filter
+    lSample = peaking_filter_update(&filt, lSample);
+    rSample = peaking_filter_update(&filt, rSample);
+
     // multiply by 2 (leftshift) -> +3dB per sample (don't use, it will make a *click* noise)
     // lSample = lSample<<1;
     // rSample = rSample<<1;
     
     // Run filtering for each band on the left and right channels
-    int filteredOutputs[10];
+    // int filteredOutputs[10];
 
-    filteredOutputs[0] = Calc_IIR_Left(lSample, &lowShelfCoeffs) * gainLowShelf;
-    filteredOutputs[1] = Calc_IIR_Right(rSample, &lowShelfCoeffs) * gainLowShelf;
-    filteredOutputs[2] = Calc_IIR_Left(lSample, &lowMidCoeffs) * gainLowMid;
-    filteredOutputs[3] = Calc_IIR_Right(rSample, &lowMidCoeffs) * gainLowMid;
-    filteredOutputs[4] = Calc_IIR_Left(lSample, &midBandCoeffs) * gainMid;
-    filteredOutputs[5] = Calc_IIR_Right(rSample, &midBandCoeffs) * gainMid;
-    filteredOutputs[6] = Calc_IIR_Left(lSample, &highMidCoeffs) * gainHighMid;
-    filteredOutputs[7] = Calc_IIR_Right(rSample, &highMidCoeffs) * gainHighMid;
-    filteredOutputs[8] = Calc_IIR_Left(lSample, &highShelfCoeffs) * gainHighShelf;
-    filteredOutputs[9] = Calc_IIR_Right(rSample, &highShelfCoeffs) * gainHighShelf;
+    // filteredOutputs[0] = Calc_IIR_Left(lSample, &lowShelfCoeffs) * gainLowShelf;
+    // filteredOutputs[1] = Calc_IIR_Right(rSample, &lowShelfCoeffs) * gainLowShelf;
+    // filteredOutputs[2] = Calc_IIR_Left(lSample, &lowMidCoeffs) * gainLowMid;
+    // filteredOutputs[3] = Calc_IIR_Right(rSample, &lowMidCoeffs) * gainLowMid;
+    // filteredOutputs[4] = Calc_IIR_Left(lSample, &midBandCoeffs) * gainMid;
+    // filteredOutputs[5] = Calc_IIR_Right(rSample, &midBandCoeffs) * gainMid;
+    // filteredOutputs[6] = Calc_IIR_Left(lSample, &highMidCoeffs) * gainHighMid;
+    // filteredOutputs[7] = Calc_IIR_Right(rSample, &highMidCoeffs) * gainHighMid;
+    // filteredOutputs[8] = Calc_IIR_Left(lSample, &highShelfCoeffs) * gainHighShelf;
+    // filteredOutputs[9] = Calc_IIR_Right(rSample, &highShelfCoeffs) * gainHighShelf;
 
     // Restore to buffer
-    for (int i = 0; i < 10; ++i) {
-        txBuf[i * 2] = (int)(filteredOutputs[i] >> 16) & 0xFFFF;
-        txBuf[i * 2 + 1] = (int)filteredOutputs[i] & 0xFFFF;
-    }
+    // for (int i = 0; i < 10; ++i) {
+    //     txBuf[i * 2] = (int)(filteredOutputs[i] >> 16) & 0xFFFF;
+    //     txBuf[i * 2 + 1] = (int)filteredOutputs[i] & 0xFFFF;
+    // }
+
+    //restore to buffer
+    txBuf[0] = (lSample>>16)&0xFFFF;
+    txBuf[1] = lSample&0xFFFF;
+    txBuf[2] = (rSample>>16)&0xFFFF;
+    txBuf[3] = rSample&0xFFFF;
 }
 
 void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s){
@@ -397,29 +414,39 @@ void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s){
     int lSample = (int) (rxBuf[4]<<16) | rxBuf[5];
     int rSample = (int) (rxBuf[6]<<16) | rxBuf[7];
 
+    // test peaking filter
+    lSample = peaking_filter_update(&filt, lSample);
+    rSample = peaking_filter_update(&filt, rSample);
+
     // multiply by 2 (leftshift) -> +3dB per sample (don't use, it will make a *click* noise)
     // lSample = lSample<<1;
     // rSample = rSample<<1;
 
     // Run filtering for each band on the left and right channels
-    int filteredOutputs[10];
+    // int filteredOutputs[10];
 
-    filteredOutputs[0] = Calc_IIR_Left(lSample, &lowShelfCoeffs) * gainLowShelf;
-    filteredOutputs[1] = Calc_IIR_Right(rSample, &lowShelfCoeffs) * gainLowShelf;
-    filteredOutputs[2] = Calc_IIR_Left(lSample, &lowMidCoeffs) * gainLowMid;
-    filteredOutputs[3] = Calc_IIR_Right(rSample, &lowMidCoeffs) * gainLowMid;
-    filteredOutputs[4] = Calc_IIR_Left(lSample, &midBandCoeffs) * gainMid;
-    filteredOutputs[5] = Calc_IIR_Right(rSample, &midBandCoeffs) * gainMid;
-    filteredOutputs[6] = Calc_IIR_Left(lSample, &highMidCoeffs) * gainHighMid;
-    filteredOutputs[7] = Calc_IIR_Right(rSample, &highMidCoeffs) * gainHighMid;
-    filteredOutputs[8] = Calc_IIR_Left(lSample, &highShelfCoeffs) * gainHighShelf;
-    filteredOutputs[9] = Calc_IIR_Right(rSample, &highShelfCoeffs) * gainHighShelf;
+    // filteredOutputs[0] = Calc_IIR_Left(lSample, &lowShelfCoeffs) * gainLowShelf;
+    // filteredOutputs[1] = Calc_IIR_Right(rSample, &lowShelfCoeffs) * gainLowShelf;
+    // filteredOutputs[2] = Calc_IIR_Left(lSample, &lowMidCoeffs) * gainLowMid;
+    // filteredOutputs[3] = Calc_IIR_Right(rSample, &lowMidCoeffs) * gainLowMid;
+    // filteredOutputs[4] = Calc_IIR_Left(lSample, &midBandCoeffs) * gainMid;
+    // filteredOutputs[5] = Calc_IIR_Right(rSample, &midBandCoeffs) * gainMid;
+    // filteredOutputs[6] = Calc_IIR_Left(lSample, &highMidCoeffs) * gainHighMid;
+    // filteredOutputs[7] = Calc_IIR_Right(rSample, &highMidCoeffs) * gainHighMid;
+    // filteredOutputs[8] = Calc_IIR_Left(lSample, &highShelfCoeffs) * gainHighShelf;
+    // filteredOutputs[9] = Calc_IIR_Right(rSample, &highShelfCoeffs) * gainHighShelf;
 
     // Restore to buffer
-    for (int i = 0; i < 10; ++i) {
-        txBuf[i * 2 + 4] = (int)(filteredOutputs[i] >> 16) & 0xFFFF;
-        txBuf[i * 2 + 5] = (int)filteredOutputs[i] & 0xFFFF;
-    }
+    // for (int i = 0; i < 10; ++i) {
+    //     txBuf[i * 2 + 4] = (int)(filteredOutputs[i] >> 16) & 0xFFFF;
+    //     txBuf[i * 2 + 5] = (int)filteredOutputs[i] & 0xFFFF;
+    // }
+
+    //restore to buffer
+    txBuf[4] = (lSample>>16)&0xFFFF;
+    txBuf[5] = lSample&0xFFFF;
+    txBuf[6] = (rSample>>16)&0xFFFF;
+    txBuf[7] = rSample&0xFFFF;
 }
 
 /* USER CODE END 4 */
