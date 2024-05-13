@@ -1615,7 +1615,7 @@ void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
  80010fc:	af00      	add	r7, sp, #0
  80010fe:	6078      	str	r0, [r7, #4]
     // Restore signed 24-bit sample from 16-bit buffers
-    int lSample = (int) (rxBuf[0]<<16) | rxBuf[1];
+    int rSample = (int) (rxBuf[0]<<16) | rxBuf[1];
  8001100:	4b22      	ldr	r3, [pc, #136]	@ (800118c <HAL_I2SEx_TxRxHalfCpltCallback+0x94>)
  8001102:	881b      	ldrh	r3, [r3, #0]
  8001104:	041b      	lsls	r3, r3, #16
@@ -1623,7 +1623,7 @@ void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
  8001108:	8852      	ldrh	r2, [r2, #2]
  800110a:	4313      	orrs	r3, r2
  800110c:	60fb      	str	r3, [r7, #12]
-    int rSample = (int) (rxBuf[2]<<16) | rxBuf[3];
+    int lSample = (int) (rxBuf[2]<<16) | rxBuf[3];
  800110e:	4b1f      	ldr	r3, [pc, #124]	@ (800118c <HAL_I2SEx_TxRxHalfCpltCallback+0x94>)
  8001110:	889b      	ldrh	r3, [r3, #4]
  8001112:	041b      	lsls	r3, r3, #16
@@ -1634,7 +1634,7 @@ void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
 
     // test peaking filter
     lSample = peaking_filter_update(&filt, lSample);
- 800111c:	68fb      	ldr	r3, [r7, #12]
+ 800111c:	68bb      	ldr	r3, [r7, #8]
  800111e:	ee07 3a90 	vmov	s15, r3
  8001122:	eef8 7ae7 	vcvt.f32.s32	s15, s15
  8001126:	eeb0 0a67 	vmov.f32	s0, s15
@@ -1643,9 +1643,9 @@ void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
  8001130:	eef0 7a40 	vmov.f32	s15, s0
  8001134:	eefd 7ae7 	vcvt.s32.f32	s15, s15
  8001138:	ee17 3a90 	vmov	r3, s15
- 800113c:	60fb      	str	r3, [r7, #12]
+ 800113c:	60bb      	str	r3, [r7, #8]
     rSample = peaking_filter_update(&filt, rSample);
- 800113e:	68bb      	ldr	r3, [r7, #8]
+ 800113e:	68fb      	ldr	r3, [r7, #12]
  8001140:	ee07 3a90 	vmov	s15, r3
  8001144:	eef8 7ae7 	vcvt.f32.s32	s15, s15
  8001148:	eeb0 0a67 	vmov.f32	s0, s15
@@ -1654,31 +1654,31 @@ void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
  8001152:	eef0 7a40 	vmov.f32	s15, s0
  8001156:	eefd 7ae7 	vcvt.s32.f32	s15, s15
  800115a:	ee17 3a90 	vmov	r3, s15
- 800115e:	60bb      	str	r3, [r7, #8]
+ 800115e:	60fb      	str	r3, [r7, #12]
     //     txBuf[i * 2] = (int)(filteredOutputs[i] >> 16) & 0xFFFF;
     //     txBuf[i * 2 + 1] = (int)filteredOutputs[i] & 0xFFFF;
     // }
 
     //restore to buffer
     txBuf[0] = (lSample>>16)&0xFFFF;
- 8001160:	68fb      	ldr	r3, [r7, #12]
+ 8001160:	68bb      	ldr	r3, [r7, #8]
  8001162:	0c1b      	lsrs	r3, r3, #16
  8001164:	b29a      	uxth	r2, r3
  8001166:	4b0b      	ldr	r3, [pc, #44]	@ (8001194 <HAL_I2SEx_TxRxHalfCpltCallback+0x9c>)
  8001168:	801a      	strh	r2, [r3, #0]
     txBuf[1] = lSample&0xFFFF;
- 800116a:	68fb      	ldr	r3, [r7, #12]
+ 800116a:	68bb      	ldr	r3, [r7, #8]
  800116c:	b29a      	uxth	r2, r3
  800116e:	4b09      	ldr	r3, [pc, #36]	@ (8001194 <HAL_I2SEx_TxRxHalfCpltCallback+0x9c>)
  8001170:	805a      	strh	r2, [r3, #2]
     txBuf[2] = (rSample>>16)&0xFFFF;
- 8001172:	68bb      	ldr	r3, [r7, #8]
+ 8001172:	68fb      	ldr	r3, [r7, #12]
  8001174:	0c1b      	lsrs	r3, r3, #16
  8001176:	b29a      	uxth	r2, r3
  8001178:	4b06      	ldr	r3, [pc, #24]	@ (8001194 <HAL_I2SEx_TxRxHalfCpltCallback+0x9c>)
  800117a:	809a      	strh	r2, [r3, #4]
     txBuf[3] = rSample&0xFFFF;
- 800117c:	68bb      	ldr	r3, [r7, #8]
+ 800117c:	68fb      	ldr	r3, [r7, #12]
  800117e:	b29a      	uxth	r2, r3
  8001180:	4b04      	ldr	r3, [pc, #16]	@ (8001194 <HAL_I2SEx_TxRxHalfCpltCallback+0x9c>)
  8001182:	80da      	strh	r2, [r3, #6]
@@ -1699,7 +1699,7 @@ void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s){
  800119c:	af00      	add	r7, sp, #0
  800119e:	6078      	str	r0, [r7, #4]
     // Restore signed 24-bit sample from 16-bit buffers
-    int lSample = (int) (rxBuf[4]<<16) | rxBuf[5];
+    int rSample = (int) (rxBuf[4]<<16) | rxBuf[5];
  80011a0:	4b22      	ldr	r3, [pc, #136]	@ (800122c <HAL_I2SEx_TxRxCpltCallback+0x94>)
  80011a2:	891b      	ldrh	r3, [r3, #8]
  80011a4:	041b      	lsls	r3, r3, #16
@@ -1707,7 +1707,7 @@ void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s){
  80011a8:	8952      	ldrh	r2, [r2, #10]
  80011aa:	4313      	orrs	r3, r2
  80011ac:	60fb      	str	r3, [r7, #12]
-    int rSample = (int) (rxBuf[6]<<16) | rxBuf[7];
+    int lSample = (int) (rxBuf[6]<<16) | rxBuf[7];
  80011ae:	4b1f      	ldr	r3, [pc, #124]	@ (800122c <HAL_I2SEx_TxRxCpltCallback+0x94>)
  80011b0:	899b      	ldrh	r3, [r3, #12]
  80011b2:	041b      	lsls	r3, r3, #16
@@ -1718,7 +1718,7 @@ void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s){
 
     // test peaking filter
     lSample = peaking_filter_update(&filt, lSample);
- 80011bc:	68fb      	ldr	r3, [r7, #12]
+ 80011bc:	68bb      	ldr	r3, [r7, #8]
  80011be:	ee07 3a90 	vmov	s15, r3
  80011c2:	eef8 7ae7 	vcvt.f32.s32	s15, s15
  80011c6:	eeb0 0a67 	vmov.f32	s0, s15
@@ -1727,9 +1727,9 @@ void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s){
  80011d0:	eef0 7a40 	vmov.f32	s15, s0
  80011d4:	eefd 7ae7 	vcvt.s32.f32	s15, s15
  80011d8:	ee17 3a90 	vmov	r3, s15
- 80011dc:	60fb      	str	r3, [r7, #12]
+ 80011dc:	60bb      	str	r3, [r7, #8]
     rSample = peaking_filter_update(&filt, rSample);
- 80011de:	68bb      	ldr	r3, [r7, #8]
+ 80011de:	68fb      	ldr	r3, [r7, #12]
  80011e0:	ee07 3a90 	vmov	s15, r3
  80011e4:	eef8 7ae7 	vcvt.f32.s32	s15, s15
  80011e8:	eeb0 0a67 	vmov.f32	s0, s15
@@ -1738,31 +1738,31 @@ void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s){
  80011f2:	eef0 7a40 	vmov.f32	s15, s0
  80011f6:	eefd 7ae7 	vcvt.s32.f32	s15, s15
  80011fa:	ee17 3a90 	vmov	r3, s15
- 80011fe:	60bb      	str	r3, [r7, #8]
+ 80011fe:	60fb      	str	r3, [r7, #12]
     //     txBuf[i * 2 + 4] = (int)(filteredOutputs[i] >> 16) & 0xFFFF;
     //     txBuf[i * 2 + 5] = (int)filteredOutputs[i] & 0xFFFF;
     // }
 
     //restore to buffer
     txBuf[4] = (lSample>>16)&0xFFFF;
- 8001200:	68fb      	ldr	r3, [r7, #12]
+ 8001200:	68bb      	ldr	r3, [r7, #8]
  8001202:	0c1b      	lsrs	r3, r3, #16
  8001204:	b29a      	uxth	r2, r3
  8001206:	4b0b      	ldr	r3, [pc, #44]	@ (8001234 <HAL_I2SEx_TxRxCpltCallback+0x9c>)
  8001208:	811a      	strh	r2, [r3, #8]
     txBuf[5] = lSample&0xFFFF;
- 800120a:	68fb      	ldr	r3, [r7, #12]
+ 800120a:	68bb      	ldr	r3, [r7, #8]
  800120c:	b29a      	uxth	r2, r3
  800120e:	4b09      	ldr	r3, [pc, #36]	@ (8001234 <HAL_I2SEx_TxRxCpltCallback+0x9c>)
  8001210:	815a      	strh	r2, [r3, #10]
     txBuf[6] = (rSample>>16)&0xFFFF;
- 8001212:	68bb      	ldr	r3, [r7, #8]
+ 8001212:	68fb      	ldr	r3, [r7, #12]
  8001214:	0c1b      	lsrs	r3, r3, #16
  8001216:	b29a      	uxth	r2, r3
  8001218:	4b06      	ldr	r3, [pc, #24]	@ (8001234 <HAL_I2SEx_TxRxCpltCallback+0x9c>)
  800121a:	819a      	strh	r2, [r3, #12]
     txBuf[7] = rSample&0xFFFF;
- 800121c:	68bb      	ldr	r3, [r7, #8]
+ 800121c:	68fb      	ldr	r3, [r7, #12]
  800121e:	b29a      	uxth	r2, r3
  8001220:	4b04      	ldr	r3, [pc, #16]	@ (8001234 <HAL_I2SEx_TxRxCpltCallback+0x9c>)
  8001222:	81da      	strh	r2, [r3, #14]

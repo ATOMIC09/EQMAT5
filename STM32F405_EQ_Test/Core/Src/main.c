@@ -371,8 +371,8 @@ int Calc_IIR_Right(int inSample, const FilterCoeffs *coeffs) {
 
 void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
     // Restore signed 24-bit sample from 16-bit buffers
-    int lSample = (int) (rxBuf[0]<<16) | rxBuf[1];
-    int rSample = (int) (rxBuf[2]<<16) | rxBuf[3];
+    int rSample = (int) (rxBuf[0]<<16) | rxBuf[1];
+    int lSample = (int) (rxBuf[2]<<16) | rxBuf[3];
 
     // test peaking filter
     lSample = peaking_filter_update(&filt, lSample);
@@ -411,8 +411,8 @@ void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
 
 void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s){
     // Restore signed 24-bit sample from 16-bit buffers
-    int lSample = (int) (rxBuf[4]<<16) | rxBuf[5];
-    int rSample = (int) (rxBuf[6]<<16) | rxBuf[7];
+    int rSample = (int) (rxBuf[4]<<16) | rxBuf[5];
+    int lSample = (int) (rxBuf[6]<<16) | rxBuf[7];
 
     // test peaking filter
     lSample = peaking_filter_update(&filt, lSample);
