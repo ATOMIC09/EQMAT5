@@ -23,31 +23,31 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   CONTENTS, ALLOC, LOAD, DATA
   9 .ccmram       00000000  10000000  10000000  0000608c  2**0
                   CONTENTS
- 10 .bss          00000384  2000008c  2000008c  0000608c  2**2
+ 10 .bss          00000370  2000008c  2000008c  0000608c  2**2
                   ALLOC
- 11 ._user_heap_stack 00000600  20000410  20000410  0000608c  2**0
+ 11 ._user_heap_stack 00000604  200003fc  200003fc  0000608c  2**0
                   ALLOC
  12 .ARM.attributes 00000030  00000000  00000000  0000608c  2**0
                   CONTENTS, READONLY
- 13 .debug_info   0000741f  00000000  00000000  000060bc  2**0
+ 13 .debug_info   00007405  00000000  00000000  000060bc  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 14 .debug_abbrev 00001b6f  00000000  00000000  0000d4db  2**0
+ 14 .debug_abbrev 00001b5e  00000000  00000000  0000d4c1  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 15 .debug_aranges 000006d0  00000000  00000000  0000f050  2**3
+ 15 .debug_aranges 000006d0  00000000  00000000  0000f020  2**3
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 16 .debug_rnglists 00000508  00000000  00000000  0000f720  2**0
+ 16 .debug_rnglists 00000508  00000000  00000000  0000f6f0  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 17 .debug_macro  0001e943  00000000  00000000  0000fc28  2**0
+ 17 .debug_macro  0001e943  00000000  00000000  0000fbf8  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 18 .debug_line   00009da7  00000000  00000000  0002e56b  2**0
+ 18 .debug_line   00009da7  00000000  00000000  0002e53b  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 19 .debug_str    000b7ae3  00000000  00000000  00038312  2**0
+ 19 .debug_str    000b7ad7  00000000  00000000  000382e2  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 20 .comment      00000043  00000000  00000000  000efdf5  2**0
+ 20 .comment      00000043  00000000  00000000  000efdb9  2**0
                   CONTENTS, READONLY
- 21 .debug_frame  00001df4  00000000  00000000  000efe38  2**2
+ 21 .debug_frame  00001df4  00000000  00000000  000efdfc  2**2
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 22 .debug_line_str 00000066  00000000  00000000  000f1c2c  2**0
+ 22 .debug_line_str 00000066  00000000  00000000  000f1bf0  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
 
 Disassembly of section .text:
@@ -1007,10 +1007,10 @@ int main(void)
  8000c1c:	e7fd      	b.n	8000c1a <main+0xf6>
  8000c1e:	bf00      	nop
  8000c20:	200001d0 	.word	0x200001d0
- 8000c24:	20000204 	.word	0x20000204
- 8000c28:	20000238 	.word	0x20000238
- 8000c2c:	2000026c 	.word	0x2000026c
- 8000c30:	200002a0 	.word	0x200002a0
+ 8000c24:	20000200 	.word	0x20000200
+ 8000c28:	20000230 	.word	0x20000230
+ 8000c2c:	20000260 	.word	0x20000260
+ 8000c30:	20000290 	.word	0x20000290
  8000c34:	20000014 	.word	0x20000014
  8000c38:	20000000 	.word	0x20000000
  8000c3c:	20000028 	.word	0x20000028
@@ -1545,10 +1545,10 @@ void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s) {
  8000ff6:	bd80      	pop	{r7, pc}
  8000ff8:	200001b0 	.word	0x200001b0
  8000ffc:	200001d0 	.word	0x200001d0
- 8001000:	20000204 	.word	0x20000204
- 8001004:	20000238 	.word	0x20000238
- 8001008:	2000026c 	.word	0x2000026c
- 800100c:	200002a0 	.word	0x200002a0
+ 8001000:	20000200 	.word	0x20000200
+ 8001004:	20000230 	.word	0x20000230
+ 8001008:	20000260 	.word	0x20000260
+ 800100c:	20000290 	.word	0x20000290
  8001010:	200001c0 	.word	0x200001c0
 
 08001014 <HAL_I2SEx_TxRxCpltCallback>:
@@ -1697,10 +1697,10 @@ void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s) {
  800115e:	bd80      	pop	{r7, pc}
  8001160:	200001b0 	.word	0x200001b0
  8001164:	200001d0 	.word	0x200001d0
- 8001168:	20000204 	.word	0x20000204
- 800116c:	20000238 	.word	0x20000238
- 8001170:	2000026c 	.word	0x2000026c
- 8001174:	200002a0 	.word	0x200002a0
+ 8001168:	20000200 	.word	0x20000200
+ 800116c:	20000230 	.word	0x20000230
+ 8001170:	20000260 	.word	0x20000260
+ 8001174:	20000290 	.word	0x20000290
  8001178:	200001c0 	.word	0x200001c0
 
 0800117c <Error_Handler>:
@@ -1743,27 +1743,27 @@ void peaking_filter_init(peaking_filter_data *filt) {
     filt -> x[0] = 0.0f;
  8001190:	687b      	ldr	r3, [r7, #4]
  8001192:	f04f 0200 	mov.w	r2, #0
- 8001196:	605a      	str	r2, [r3, #4]
+ 8001196:	601a      	str	r2, [r3, #0]
     filt -> x[1] = 0.0f;
  8001198:	687b      	ldr	r3, [r7, #4]
  800119a:	f04f 0200 	mov.w	r2, #0
- 800119e:	609a      	str	r2, [r3, #8]
+ 800119e:	605a      	str	r2, [r3, #4]
     filt -> x[2] = 0.0f;
  80011a0:	687b      	ldr	r3, [r7, #4]
  80011a2:	f04f 0200 	mov.w	r2, #0
- 80011a6:	60da      	str	r2, [r3, #12]
+ 80011a6:	609a      	str	r2, [r3, #8]
     filt -> y[0] = 0.0f;
  80011a8:	687b      	ldr	r3, [r7, #4]
  80011aa:	f04f 0200 	mov.w	r2, #0
- 80011ae:	611a      	str	r2, [r3, #16]
+ 80011ae:	60da      	str	r2, [r3, #12]
     filt -> y[1] = 0.0f;
  80011b0:	687b      	ldr	r3, [r7, #4]
  80011b2:	f04f 0200 	mov.w	r2, #0
- 80011b6:	615a      	str	r2, [r3, #20]
+ 80011b6:	611a      	str	r2, [r3, #16]
     filt -> y[2] = 0.0f;
  80011b8:	687b      	ldr	r3, [r7, #4]
  80011ba:	f04f 0200 	mov.w	r2, #0
- 80011be:	619a      	str	r2, [r3, #24]
+ 80011be:	615a      	str	r2, [r3, #20]
 }
  80011c0:	bf00      	nop
  80011c2:	370c      	adds	r7, #12
@@ -1828,7 +1828,7 @@ void peaking_filter_set_params(peaking_filter_data *filt, float gain, float cent
  8001246:	eef0 7a40 	vmov.f32	s15, s0
  800124a:	ee78 7a27 	vadd.f32	s15, s16, s15
  800124e:	68fb      	ldr	r3, [r7, #12]
- 8001250:	edc3 7a07 	vstr	s15, [r3, #28]
+ 8001250:	edc3 7a06 	vstr	s15, [r3, #24]
     filt -> a[1] = 2.0f * powf((wcT),2) - 8.0f;
  8001254:	eef0 0a00 	vmov.f32	s1, #0	@ 0x40000000  2.0
  8001258:	ed97 0a04 	vldr	s0, [r7, #16]
@@ -1838,7 +1838,7 @@ void peaking_filter_set_params(peaking_filter_data *filt, float gain, float cent
  8001268:	eeb2 7a00 	vmov.f32	s14, #32	@ 0x41000000  8.0
  800126c:	ee77 7ac7 	vsub.f32	s15, s15, s14
  8001270:	68fb      	ldr	r3, [r7, #12]
- 8001272:	edc3 7a08 	vstr	s15, [r3, #32]
+ 8001272:	edc3 7a07 	vstr	s15, [r3, #28]
     filt -> a[2] = 4.0f - (2.0f * (gain/q_width) * wcT) + powf((wcT),2);
  8001276:	edd7 6a02 	vldr	s13, [r7, #8]
  800127a:	ed97 7a00 	vldr	s14, [r7]
@@ -1854,7 +1854,7 @@ void peaking_filter_set_params(peaking_filter_data *filt, float gain, float cent
  80012a2:	eef0 7a40 	vmov.f32	s15, s0
  80012a6:	ee78 7a27 	vadd.f32	s15, s16, s15
  80012aa:	68fb      	ldr	r3, [r7, #12]
- 80012ac:	edc3 7a09 	vstr	s15, [r3, #36]	@ 0x24
+ 80012ac:	edc3 7a08 	vstr	s15, [r3, #32]
     filt -> b[0] = 1.0f / (4.0f + 2.0f / q_width * wcT + wcT * wcT);
  80012b0:	eef0 6a00 	vmov.f32	s13, #0	@ 0x40000000  2.0
  80012b4:	edd7 7a00 	vldr	s15, [r7]
@@ -1869,7 +1869,7 @@ void peaking_filter_set_params(peaking_filter_data *filt, float gain, float cent
  80012d8:	eef7 6a00 	vmov.f32	s13, #112	@ 0x3f800000  1.0
  80012dc:	eec6 7a87 	vdiv.f32	s15, s13, s14
  80012e0:	68fb      	ldr	r3, [r7, #12]
- 80012e2:	edc3 7a0a 	vstr	s15, [r3, #40]	@ 0x28
+ 80012e2:	edc3 7a09 	vstr	s15, [r3, #36]	@ 0x24
     filt -> b[1] = -(2.0f * wcT * wcT - 8.0f);
  80012e6:	edd7 7a04 	vldr	s15, [r7, #16]
  80012ea:	ee37 7aa7 	vadd.f32	s14, s15, s15
@@ -1879,7 +1879,7 @@ void peaking_filter_set_params(peaking_filter_data *filt, float gain, float cent
  80012fa:	ee77 7ac7 	vsub.f32	s15, s15, s14
  80012fe:	eef1 7a67 	vneg.f32	s15, s15
  8001302:	68fb      	ldr	r3, [r7, #12]
- 8001304:	edc3 7a0b 	vstr	s15, [r3, #44]	@ 0x2c
+ 8001304:	edc3 7a0a 	vstr	s15, [r3, #40]	@ 0x28
     filt -> b[2] = -(4.0f - 2.0f / q_width * wcT + wcT * wcT);
  8001308:	eef0 6a00 	vmov.f32	s13, #0	@ 0x40000000  2.0
  800130c:	edd7 7a00 	vldr	s15, [r7]
@@ -1893,7 +1893,7 @@ void peaking_filter_set_params(peaking_filter_data *filt, float gain, float cent
  800132c:	ee77 7a27 	vadd.f32	s15, s14, s15
  8001330:	eef1 7a67 	vneg.f32	s15, s15
  8001334:	68fb      	ldr	r3, [r7, #12]
- 8001336:	edc3 7a0c 	vstr	s15, [r3, #48]	@ 0x30
+ 8001336:	edc3 7a0b 	vstr	s15, [r3, #44]	@ 0x2c
 }
  800133a:	bf00      	nop
  800133c:	3718      	adds	r7, #24
@@ -1916,68 +1916,68 @@ float peaking_filter_update(peaking_filter_data *filt, float in) {
     // Update filter memory
     filt -> x[2] = filt -> x[1];
  8001360:	687b      	ldr	r3, [r7, #4]
- 8001362:	689a      	ldr	r2, [r3, #8]
+ 8001362:	685a      	ldr	r2, [r3, #4]
  8001364:	687b      	ldr	r3, [r7, #4]
- 8001366:	60da      	str	r2, [r3, #12]
+ 8001366:	609a      	str	r2, [r3, #8]
     filt -> x[1] = filt -> x[0];
  8001368:	687b      	ldr	r3, [r7, #4]
- 800136a:	685a      	ldr	r2, [r3, #4]
+ 800136a:	681a      	ldr	r2, [r3, #0]
  800136c:	687b      	ldr	r3, [r7, #4]
- 800136e:	609a      	str	r2, [r3, #8]
+ 800136e:	605a      	str	r2, [r3, #4]
     filt -> x[0] = in;
  8001370:	687b      	ldr	r3, [r7, #4]
  8001372:	683a      	ldr	r2, [r7, #0]
- 8001374:	605a      	str	r2, [r3, #4]
+ 8001374:	601a      	str	r2, [r3, #0]
     filt -> y[2] = filt -> y[1];
  8001376:	687b      	ldr	r3, [r7, #4]
- 8001378:	695a      	ldr	r2, [r3, #20]
+ 8001378:	691a      	ldr	r2, [r3, #16]
  800137a:	687b      	ldr	r3, [r7, #4]
- 800137c:	619a      	str	r2, [r3, #24]
+ 800137c:	615a      	str	r2, [r3, #20]
     filt -> y[1] = filt -> y[0];
  800137e:	687b      	ldr	r3, [r7, #4]
- 8001380:	691a      	ldr	r2, [r3, #16]
+ 8001380:	68da      	ldr	r2, [r3, #12]
  8001382:	687b      	ldr	r3, [r7, #4]
- 8001384:	615a      	str	r2, [r3, #20]
+ 8001384:	611a      	str	r2, [r3, #16]
 
     // Compute filter output
     filt -> y[0] = ((filt -> a[0] * filt -> x[0] + filt -> a[1] * filt -> x[1] + filt -> a[2] * filt -> x[2]) + (filt -> b[1] * filt -> y[1] + filt -> b[2] * filt -> y[2])) * filt -> b[0]; // / filt -> b[0];
  8001386:	687b      	ldr	r3, [r7, #4]
- 8001388:	ed93 7a07 	vldr	s14, [r3, #28]
+ 8001388:	ed93 7a06 	vldr	s14, [r3, #24]
  800138c:	687b      	ldr	r3, [r7, #4]
- 800138e:	edd3 7a01 	vldr	s15, [r3, #4]
+ 800138e:	edd3 7a00 	vldr	s15, [r3]
  8001392:	ee27 7a27 	vmul.f32	s14, s14, s15
  8001396:	687b      	ldr	r3, [r7, #4]
- 8001398:	edd3 6a08 	vldr	s13, [r3, #32]
+ 8001398:	edd3 6a07 	vldr	s13, [r3, #28]
  800139c:	687b      	ldr	r3, [r7, #4]
- 800139e:	edd3 7a02 	vldr	s15, [r3, #8]
+ 800139e:	edd3 7a01 	vldr	s15, [r3, #4]
  80013a2:	ee66 7aa7 	vmul.f32	s15, s13, s15
  80013a6:	ee37 7a27 	vadd.f32	s14, s14, s15
  80013aa:	687b      	ldr	r3, [r7, #4]
- 80013ac:	edd3 6a09 	vldr	s13, [r3, #36]	@ 0x24
+ 80013ac:	edd3 6a08 	vldr	s13, [r3, #32]
  80013b0:	687b      	ldr	r3, [r7, #4]
- 80013b2:	edd3 7a03 	vldr	s15, [r3, #12]
+ 80013b2:	edd3 7a02 	vldr	s15, [r3, #8]
  80013b6:	ee66 7aa7 	vmul.f32	s15, s13, s15
  80013ba:	ee37 7a27 	vadd.f32	s14, s14, s15
  80013be:	687b      	ldr	r3, [r7, #4]
- 80013c0:	edd3 6a0b 	vldr	s13, [r3, #44]	@ 0x2c
+ 80013c0:	edd3 6a0a 	vldr	s13, [r3, #40]	@ 0x28
  80013c4:	687b      	ldr	r3, [r7, #4]
- 80013c6:	edd3 7a05 	vldr	s15, [r3, #20]
+ 80013c6:	edd3 7a04 	vldr	s15, [r3, #16]
  80013ca:	ee66 6aa7 	vmul.f32	s13, s13, s15
  80013ce:	687b      	ldr	r3, [r7, #4]
- 80013d0:	ed93 6a0c 	vldr	s12, [r3, #48]	@ 0x30
+ 80013d0:	ed93 6a0b 	vldr	s12, [r3, #44]	@ 0x2c
  80013d4:	687b      	ldr	r3, [r7, #4]
- 80013d6:	edd3 7a06 	vldr	s15, [r3, #24]
+ 80013d6:	edd3 7a05 	vldr	s15, [r3, #20]
  80013da:	ee66 7a27 	vmul.f32	s15, s12, s15
  80013de:	ee76 7aa7 	vadd.f32	s15, s13, s15
  80013e2:	ee37 7a27 	vadd.f32	s14, s14, s15
  80013e6:	687b      	ldr	r3, [r7, #4]
- 80013e8:	edd3 7a0a 	vldr	s15, [r3, #40]	@ 0x28
+ 80013e8:	edd3 7a09 	vldr	s15, [r3, #36]	@ 0x24
  80013ec:	ee67 7a27 	vmul.f32	s15, s14, s15
  80013f0:	687b      	ldr	r3, [r7, #4]
- 80013f2:	edc3 7a04 	vstr	s15, [r3, #16]
+ 80013f2:	edc3 7a03 	vstr	s15, [r3, #12]
     return filt -> y[0];
  80013f6:	687b      	ldr	r3, [r7, #4]
- 80013f8:	691b      	ldr	r3, [r3, #16]
+ 80013f8:	68db      	ldr	r3, [r3, #12]
  80013fa:	ee07 3a90 	vmov	s15, r3
 }
  80013fe:	eeb0 0a67 	vmov.f32	s0, s15
@@ -2678,7 +2678,7 @@ LoopFillZerobss:
   ldr r2, =_sbss
  8001748:	2000008c 	.word	0x2000008c
   ldr r4, =_ebss
- 800174c:	20000410 	.word	0x20000410
+ 800174c:	200003fc 	.word	0x200003fc
 
 08001750 <ADC_IRQHandler>:
  * @retval None       
@@ -2841,7 +2841,7 @@ __weak void HAL_IncTick(void)
  8001814:	4770      	bx	lr
  8001816:	bf00      	nop
  8001818:	20000038 	.word	0x20000038
- 800181c:	200002d4 	.word	0x200002d4
+ 800181c:	200002c0 	.word	0x200002c0
 
 08001820 <HAL_GetTick>:
   * @note This function is declared as __weak to be overwritten in case of other 
@@ -2861,7 +2861,7 @@ __weak uint32_t HAL_GetTick(void)
  800182c:	f85d 7b04 	ldr.w	r7, [sp], #4
  8001830:	4770      	bx	lr
  8001832:	bf00      	nop
- 8001834:	200002d4 	.word	0x200002d4
+ 8001834:	200002c0 	.word	0x200002c0
 
 08001838 <__NVIC_SetPriorityGrouping>:
            In case of a conflict between priority grouping and available

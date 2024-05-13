@@ -12,11 +12,11 @@
 #include <stdint.h>
 
 typedef struct {
-    float sample_time;
     float x[3];
     float y[3];
     float a[3];
     float b[3];
+
 } peaking_filter_data;
 
 void peaking_filter_init(peaking_filter_data *filt);
