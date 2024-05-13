@@ -498,6 +498,13 @@ void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s) {
         int rSample = (int)(rxBuf[i * 4] << 16) | rxBuf[i * 4 + 1];
         int lSample = (int)(rxBuf[i * 4 + 2] << 16) | rxBuf[i * 4 + 3];
 
+        // Run filtering for each band on the left and right channels
+        lSample = peaking_filter_update(&lowFilt, lSample);
+        lSample = peaking_filter_update(&midLowFilt, lSample);
+        lSample = peaking_filter_update(&midFilt, lSample);
+        lSample = peaking_filter_update(&midHighFilt, lSample);
+        lSample = peaking_filter_update(&highFilt, lSample);
+
         txBuf[i * 4] = (lSample >> 16) & 0xFFFF;
         txBuf[i * 4 + 1] = lSample & 0xFFFF;
         txBuf[i * 4 + 2] = (rSample >> 16) & 0xFFFF;
@@ -510,6 +517,13 @@ void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s) {
     for (int i = BUFFER_SIZE / 2; i < BUFFER_SIZE; i++) {
         int rSample = (int)(rxBuf[i * 4] << 16) | rxBuf[i * 4 + 1];
         int lSample = (int)(rxBuf[i * 4 + 2] << 16) | rxBuf[i * 4 + 3];
+
+        // Run filtering for each band on the left and right channels
+        lSample = peaking_filter_update(&lowFilt, lSample);
+        lSample = peaking_filter_update(&midLowFilt, lSample);
+        lSample = peaking_filter_update(&midFilt, lSample);
+        lSample = peaking_filter_update(&midHighFilt, lSample);
+        lSample = peaking_filter_update(&highFilt, lSample);
 
         txBuf[i * 4] = (lSample >> 16) & 0xFFFF;
         txBuf[i * 4 + 1] = lSample & 0xFFFF;
