@@ -17,10 +17,10 @@ typedef struct {
     float y[3];
     float a[3];
     float b[3];
-} peaking_filter;
+} peaking_filter_data;
 
-void peaking_filter_init(peaking_filter *filt, float sample_rate);
-void peaking_filter_set_params(peaking_filter *filt, float center_freq, float bandwidth, float boostcut);
-float peaking_filter_update(peaking_filter *filt, float in);
+void peaking_filter_init(peaking_filter_data *filt);
+void peaking_filter_set_params(peaking_filter_data *filt, float center_freq, float bandwidth, float boostcut);
+float peaking_filter_update(peaking_filter_data *filt, float in);
 
 #endif /* INC_PEAKING_FILTER_H_ */
