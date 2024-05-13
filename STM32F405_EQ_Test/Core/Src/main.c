@@ -75,12 +75,12 @@ void processSignal();
 // } FilterCoeffs;
 
 // Define filt
-peaking_filter_data filt;
-peaking_filter_data lowFilt;
+// peaking_filter_data filt;
+// peaking_filter_data lowFilt;
 peaking_filter_data midLowFilt;
-peaking_filter_data midFilt;
-peaking_filter_data midHighFilt;
-peaking_filter_data highFilt;
+// peaking_filter_data midFilt;
+// peaking_filter_data midHighFilt;
+// peaking_filter_data highFilt;
 
 // Define filter band selection constants (assuming integer values)
 // #define LOW_SHELF_BAND 1
@@ -116,11 +116,11 @@ float MID_HIGH_FREQ = 3000.0f;
 float HIGH_FREQ = 10000.0f;
 
 // Placeholder for gain values from MATLAB GUI (replace with actual implementation)
-float gainLowShelf = 0.0f;
-float gainLowMid = 0.0f;
-float gainMid = 0.0f;
-float gainHighMid = 0.0f;
-float gainHighShelf = 0.0f;
+// float gainLowShelf = 1.0f;
+float gainLowMid = 1.0f;
+// float gainMid = 1.0f;
+// float gainHighMid = 1.0f;
+// float gainHighShelf = 1.0f;
 
 // Q width
 float Q = 0.7071f;
@@ -165,19 +165,19 @@ int main(void)
   MX_DMA_Init();
   MX_I2S2_Init();
   /* USER CODE BEGIN 2 */
-  peaking_filter_init(&lowFilt);
+  // peaking_filter_init(&lowFilt);
   peaking_filter_init(&midLowFilt);
-  peaking_filter_init(&midFilt);
-  peaking_filter_init(&midHighFilt);
-  peaking_filter_init(&highFilt);
+  // peaking_filter_init(&midFilt);
+  // peaking_filter_init(&midHighFilt);
+  // peaking_filter_init(&highFilt);
 
-  peaking_filter_set_params(&lowFilt, gainLowShelf, LOW_FREQ, Q);
+  // peaking_filter_set_params(&lowFilt, gainLowShelf, LOW_FREQ, Q);
   peaking_filter_set_params(&midLowFilt, gainLowMid, MID_LOW_FREQ, Q);
-  peaking_filter_set_params(&midFilt, gainMid, MID_FREQ, Q);
-  peaking_filter_set_params(&midHighFilt, gainHighMid, MID_HIGH_FREQ, Q);
-  peaking_filter_set_params(&highFilt, gainHighShelf, HIGH_FREQ, Q);
+  // peaking_filter_set_params(&midFilt, gainMid, MID_FREQ, Q);
+  // peaking_filter_set_params(&midHighFilt, gainHighMid, MID_HIGH_FREQ, Q);
+  // peaking_filter_set_params(&highFilt, gainHighShelf, HIGH_FREQ, Q);
 
-  HAL_I2SEx_TransmitReceive_DMA (&hi2s2, txBuf, rxBuf, BUFFER_SIZE);
+  HAL_I2SEx_TransmitReceive_DMA (&hi2s2, txBuf, rxBuf, BUFFER_SIZE/2);
 
   // Low, Fc=50Hz, Fs=96kHz, q=0.7071
   // l_a0 = 0.0000026711181320911584f;
@@ -404,11 +404,11 @@ void processSignal(){
 	for (int i = 0; i < iteration; i += 2){
 		leftIn = inProcessBuff[i] / 32768.0f;
 		rightIn = inProcessBuff[i] / 32768.0f;
-		leftOut = peaking_filter_update(&lowFilt, leftIn);
+		// leftOut = peaking_filter_update(&lowFilt, leftIn);
     leftOut = peaking_filter_update(&midLowFilt, leftOut);
-		leftOut = peaking_filter_update(&midFilt, leftOut);
-    leftOut = peaking_filter_update(&midHighFilt, leftOut);
-		leftOut = peaking_filter_update(&highFilt, leftOut);
+		// leftOut = peaking_filter_update(&midFilt, leftOut);
+    // leftOut = peaking_filter_update(&midHighFilt, leftOut);
+		// leftOut = peaking_filter_update(&highFilt, leftOut);
     rightOut = leftOut;
 
     outProcessBuff[i] = (int16_t)(leftOut * 32768.0f);
@@ -417,9 +417,32 @@ void processSignal(){
 }
 
 void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
-    inProcessBuff = &rxBuf[BUFFER_SIZE/2];
-    outProcessBuff = &txBuf[BUFFER_SIZE/2];
-    isDataReady = 1;
+    int iteration = BUFFER_SIZE/2; 
+    int rSample = 0;
+    int lSample = 0;
+
+    // Restore from buffer with looping
+    for (int i = 0; i < iteration; i += 2){
+        // Restore signed 24-bit sample from 16-bit buffers
+        rSample = (int) (rxBuf[i]<<16) | rxBuf[i+1];
+        lSample = (int) (rxBuf[i+2]<<16) | rxBuf[i+3];
+ 
+        // Filter the left and right channels
+        lSample = peaking_filter_update(&midLowFilt, lSample);
+        rSample = peaking_filter_update(&midLowFilt, rSample);
+
+        // Restore to buffer with looping
+        txBuf[i] = (int)(lSample >> 16) & 0xFFFF;
+        txBuf[i+1] = (int)lSample & 0xFFFF;
+        txBuf[i+2] = (int)(rSample >> 16) & 0xFFFF;
+        txBuf[i+3] = (int)rSample & 0xFFFF;
+      
+  }
+
+    // inProcessBuff = &rxBuf[BUFFER_SIZE/2];
+    // outProcessBuff = &txBuf[BUFFER_SIZE/2];
+    // isDataReady = 1;
+    // processSignal();
     // Restore signed 24-bit sample from 16-bit buffers
     // int rSample = (int) (rxBuf[0]<<16) | rxBuf[1];
     // int lSample = (int) (rxBuf[2]<<16) | rxBuf[3];
@@ -460,9 +483,31 @@ void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
 }
 
 void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s){
-    inProcessBuff = rxBuf;
-    outProcessBuff = txBuf;
-    isDataReady = 1;
+    int iteration = BUFFER_SIZE/2;
+    int rSample = 0;
+    int lSample = 0;
+
+    // Restore from buffer with looping
+    for (int i = 0; i < iteration; i += 2){
+        // Restore signed 24-bit sample from 16-bit buffers
+        rSample = (int) (rxBuf[i]<<16) | rxBuf[i+1];
+        lSample = (int) (rxBuf[i+2]<<16) | rxBuf[i+3];
+ 
+        // Filter the left and right channels
+        lSample = peaking_filter_update(&midLowFilt, lSample);
+        rSample = peaking_filter_update(&midLowFilt, rSample);
+
+        // Restore to buffer with looping
+        txBuf[i] = (int)(lSample >> 16) & 0xFFFF;
+        txBuf[i+1] = (int)lSample & 0xFFFF;
+        txBuf[i+2] = (int)(rSample >> 16) & 0xFFFF;
+        txBuf[i+3] = (int)rSample & 0xFFFF;
+    }
+
+    // inProcessBuff = rxBuf;
+    // outProcessBuff = txBuf;
+    // isDataReady = 1;
+    // processSignal();
     // Restore signed 24-bit sample from 16-bit buffers
     // int rSample = (int) (rxBuf[4]<<16) | rxBuf[5];
     // int lSample = (int) (rxBuf[6]<<16) | rxBuf[7];

@@ -31,13 +31,16 @@ void peaking_filter_set_params(peaking_filter_data *filt, float gain, float cent
     // Compute Quality factor (Q = fc / BW)
     // float Q = center_freq / bandwidth;
 
+    // Guide
+    float wcT = centerFreq_rad * dt;
+    
     // Compute filter coefficients
-    filt -> a[0] = 4.0f + (2.0f * (gain / q_width) * centerFreq_rad * dt) + powf((centerFreq_rad * dt),2);
-    filt -> a[1] = 2.0f * powf((centerFreq_rad * dt),2) - 8;
-    filt -> a[2] = 4.0f - (2.0f * (gain/q_width) * centerFreq_rad * dt) + powf((centerFreq_rad * dt),2);
-    filt -> b[0] = 4.0f + (2.0f / q_width * centerFreq_rad * dt) + powf((centerFreq_rad * dt),2);
-    filt -> b[1] = -1.0f * (2.0f * powf((centerFreq_rad * dt),2) - 8);
-    filt -> b[2] = -1.0f * (4.0f - (2.0f / q_width * centerFreq_rad * dt) + powf((centerFreq_rad * dt),2));
+    filt -> a[0] = 4.0f + (2.0f * (gain / q_width) * wcT) + powf((wcT),2);
+    filt -> a[1] = 2.0f * powf((wcT),2) - 8.0f;
+    filt -> a[2] = 4.0f - (2.0f * (gain/q_width) * wcT) + powf((wcT),2);
+    filt -> b[0] = 1.0f / (4.0f + 2.0f / q_width * wcT + wcT * wcT);
+    filt -> b[1] = -(2.0f * wcT * wcT - 8.0f);
+    filt -> b[2] = -(4.0f - 2.0f / q_width * wcT + wcT * wcT);
 }
 
 float peaking_filter_update(peaking_filter_data *filt, float in) {
@@ -49,9 +52,6 @@ float peaking_filter_update(peaking_filter_data *filt, float in) {
     filt -> y[1] = filt -> y[0];
 
     // Compute filter output
-    filt -> y[0] = ((filt -> a[0] * filt -> x[0] + filt -> a[1] * filt -> x[1] + filt -> a[2] * filt -> x[2]) + (filt -> b[1] * filt -> y[1] + filt -> b[2] * filt -> y[2])) / filt -> b[0]; // / filt -> b[0];
-    
-    // Print coefficients
-//    printf("a0: %f, a1: %f, a2: %f, b0: %f, b1: %f, b2: %f\n", filt -> a[0], filt -> a[1], filt -> a[2], filt -> b[0], filt -> b[1], filt -> b[2]);
+    filt -> y[0] = ((filt -> a[0] * filt -> x[0] + filt -> a[1] * filt -> x[1] + filt -> a[2] * filt -> x[2]) + (filt -> b[1] * filt -> y[1] + filt -> b[2] * filt -> y[2])) * filt -> b[0]; // / filt -> b[0];
     return filt -> y[0];
 }

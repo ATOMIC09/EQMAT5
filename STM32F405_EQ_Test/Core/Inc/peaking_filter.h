@@ -20,7 +20,7 @@ typedef struct {
 } peaking_filter_data;
 
 void peaking_filter_init(peaking_filter_data *filt);
-void peaking_filter_set_params(peaking_filter_data *filt, float center_freq, float bandwidth, float boostcut);
+void peaking_filter_set_params(peaking_filter_data *filt, float gain, float centerFreq_hz, float q_width);
 float peaking_filter_update(peaking_filter_data *filt, float in);
 
 #endif /* INC_PEAKING_FILTER_H_ */
