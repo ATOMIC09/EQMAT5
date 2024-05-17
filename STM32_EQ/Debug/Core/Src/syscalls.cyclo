@@ -1,4 +1,3 @@
-../Core/Src/syscalls.c:38:6:ITM_SendChar	2
 ../Core/Src/syscalls.c:63:6:initialise_monitor_handles	1
 ../Core/Src/syscalls.c:67:5:_getpid	1
 ../Core/Src/syscalls.c:72:5:_kill	1

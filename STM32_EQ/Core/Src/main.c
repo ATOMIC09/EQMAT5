@@ -114,7 +114,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-//    printf("Hello World\n");
+    printf("Hello World\n");
     HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2);
     HAL_Delay(1000);
   }
@@ -284,6 +284,18 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+int _write(int file, char *ptr, int len)
+{
+  (void)file;
+  int DataIdx;
+
+  for (DataIdx = 0; DataIdx < len; DataIdx++)
+  {
+	  ITM_SendChar(*ptr++);
+  }
+  return len;
+}
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
