@@ -22,6 +22,10 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -61,6 +65,18 @@ static void MX_DMA_Init(void);
 static void MX_I2S2_Init(void);
 static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
+
+typedef struct {
+  float a0;
+  float a1;
+  float a2;
+  float b1;
+  float b2;
+} FilterCoeffs;
+
+FilterCoeffs lowBandCoeffs;
+FilterCoeffs midBandCoeffs;
+FilterCoeffs highBandCoeffs;
 
 /* USER CODE END PFP */
 
@@ -305,10 +321,37 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   /* NOTE: This function should not be modified, when the callback is needed,
            the HAL_UART_RxCpltCallback could be implemented in the user file
    */
-  HAL_UART_Receive_IT(&huart1, rx_buffer, sizeof(rx_buffer)); // Start the next receive
-  HAL_UART_Transmit(&huart1, rx_buffer, sizeof(rx_buffer), 10); // Echo the received data
+  // HAL_UART_Transmit(&huart1, rx_buffer, sizeof(rx_buffer), 10); // Echo the received data
   printf("Received UART: %s\n", rx_buffer); // Print the received data to serial
+  parseAndStoreCoeffs(rx_buffer); // Parse the received data and store the coefficients
   memset(rx_buffer, 0, sizeof(rx_buffer)); // Clear the buffer
+  HAL_UART_Receive_IT(&huart1, rx_buffer, sizeof(rx_buffer)); // Start the next receive
+}
+
+void parseAndStoreCoeffs(char *rx_buffer) {
+    // Determine which band the coefficients are for
+    if (strncmp(rx_buffer, "Low", 3) == 0) {
+        sscanf(rx_buffer, "Low %f %f %f %f %f %f", 
+               &lowBandCoeffs.a0, &lowBandCoeffs.a1, &lowBandCoeffs.a2, 
+               &lowBandCoeffs.b1, &lowBandCoeffs.b2);
+        printf("Parsed Low: %f %f %f %f %f\n", 
+               lowBandCoeffs.a0, lowBandCoeffs.a1, lowBandCoeffs.a2, 
+               lowBandCoeffs.b1, lowBandCoeffs.b2);
+    } else if (strncmp(rx_buffer, "Mid", 3) == 0) {
+        sscanf(rx_buffer, "Mid %f %f %f %f %f %f", 
+               &midBandCoeffs.a0, &midBandCoeffs.a1, &midBandCoeffs.a2, 
+               &midBandCoeffs.b1, &midBandCoeffs.b2);
+        printf("Parsed Mid: %f %f %f %f %f\n",
+                midBandCoeffs.a0, midBandCoeffs.a1, midBandCoeffs.a2, 
+                midBandCoeffs.b1, midBandCoeffs.b2);
+    } else if (strncmp(rx_buffer, "High", 4) == 0) {
+        sscanf(rx_buffer, "High %f %f %f %f %f %f", 
+               &highBandCoeffs.a0, &highBandCoeffs.a1, &highBandCoeffs.a2, 
+               &highBandCoeffs.b1, &highBandCoeffs.b2);
+        printf("Parsed High: %f %f %f %f %f\n",
+                highBandCoeffs.a0, highBandCoeffs.a1, highBandCoeffs.a2, 
+                highBandCoeffs.b1, highBandCoeffs.b2);
+    }
 }
 
 /* USER CODE END 4 */
