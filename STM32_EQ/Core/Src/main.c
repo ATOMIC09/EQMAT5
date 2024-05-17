@@ -48,10 +48,10 @@ UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 uint8_t tx_buffer[17] = "Serial Ready!\n\r";
-uint8_t rx_index;
-uint8_t rx_data[70];
-uint8_t rx_buffer[100];
-uint8_t transfer_cplt;
+// uint8_t rx_index;
+uint8_t rx_buffer[68];
+// uint8_t rx_buffer[100];
+// uint8_t transfer_cplt;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -102,8 +102,10 @@ int main(void)
   MX_I2S2_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-  HAL_UART_Receive_IT(&huart1, rx_data, sizeof(rx_data));
+  
   HAL_UART_Transmit(&huart1, tx_buffer, sizeof(tx_buffer), 10);
+  HAL_UART_Receive_IT(&huart1, rx_buffer, sizeof(rx_buffer));
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -114,7 +116,6 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-    printf("Hello World\n");
     HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2);
     HAL_Delay(1000);
   }
@@ -304,7 +305,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   /* NOTE: This function should not be modified, when the callback is needed,
            the HAL_UART_RxCpltCallback could be implemented in the user file
    */
-  HAL_UART_Transmit(&huart1, rx_data, sizeof(rx_data), 10);
+  HAL_UART_Receive_IT(&huart1, rx_buffer, sizeof(rx_buffer)); // Start the next receive
+  HAL_UART_Transmit(&huart1, rx_buffer, sizeof(rx_buffer), 10); // Echo the received data
+  printf("Received UART: %s\n", rx_buffer); // Print the received data to serial
+  memset(rx_buffer, 0, sizeof(rx_buffer)); // Clear the buffer
 }
 
 /* USER CODE END 4 */
