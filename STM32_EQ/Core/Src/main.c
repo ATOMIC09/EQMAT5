@@ -36,6 +36,10 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
+#define AUDIO_BUFFER_SIZE 8
+#define INT16_TO_FLOAT (1.0f / 32768.0f)
+#define FLOAT_TO_INT16 (32768.0f)
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -51,11 +55,16 @@ DMA_HandleTypeDef hdma_spi2_tx;
 UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
+
 uint8_t tx_buffer[17] = "Serial Ready!\n\r";
-// uint8_t rx_index;
 uint8_t rx_buffer[70];
-// uint8_t rx_buffer[100];
-// uint8_t transfer_cplt;
+int16_t adcData[AUDIO_BUFFER_SIZE];
+int16_t dacData[AUDIO_BUFFER_SIZE];
+uint8_t dataReady;
+
+static volatile int16_t *inBufPtr;
+static volatile int16_t *outBufPtr = &dacData[0];
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -83,6 +92,49 @@ FilterCoeffs highBandCoeffs;
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+void HAL_I2S_RxHalfCpltCallback(I2S_HandleTypeDef *hi2s)
+{
+  inBufPtr = &adcData[0];
+  outBufPtr = &dacData[0];
+  dataReady = 1;
+}
+
+void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s)
+{
+  inBufPtr = &adcData[AUDIO_BUFFER_SIZE / 2];
+  outBufPtr = &dacData[AUDIO_BUFFER_SIZE / 2];
+  dataReady = 1;
+}
+
+void processData(){
+  static float leftIn, leftOut, rightIn, rightOut;
+
+  for (uint8_t n = 0; n < (AUDIO_BUFFER_SIZE / 2) - 1; n += 2){
+    // Left channel
+    // Convert ADC data to float
+    leftIn = INT16_TO_FLOAT * inBufPtr[n];
+    if (leftIn > 1.0f){
+      leftIn = -2.0f;
+    }
+    // Compute the left channel output
+    leftOut = leftIn;
+    // Convert back to int16
+    outBufPtr[n] = (int16_t)(FLOAT_TO_INT16 * leftOut);
+
+    // Right channel
+    // Convert ADC data to float
+    rightIn = INT16_TO_FLOAT * inBufPtr[n + 1];
+    if (rightIn > 1.0f){
+      rightIn = -2.0f;
+    }
+    // Compute the right channel output
+    rightOut = rightIn;
+    // Convert back to int16
+    outBufPtr[n + 1] = (int16_t)(FLOAT_TO_INT16 * rightOut);
+  }
+  dataReady = 0;
+}
 
 /* USER CODE END 0 */
 
@@ -120,8 +172,12 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   
-  HAL_UART_Transmit(&huart1, tx_buffer, sizeof(tx_buffer), 10);
-  HAL_UART_Receive_IT(&huart1, rx_buffer, sizeof(rx_buffer));
+  // Start UART communication
+  HAL_UART_Transmit(&huart1, tx_buffer, sizeof(tx_buffer), 10); // Send ready message
+  HAL_UART_Receive_IT(&huart1, rx_buffer, sizeof(rx_buffer)); // Start UART receive
+
+  // Start I2S communication
+  HAL_I2SEx_TransmitReceive_DMA(&hi2s2, (uint16_t *)dacData, (uint16_t *)adcData, AUDIO_BUFFER_SIZE);
 
   /* USER CODE END 2 */
 
@@ -133,8 +189,14 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
+    // Blink the LED while working
     HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2);
     HAL_Delay(1000);
+
+    // Check if data is ready to be processed
+    if (dataReady){
+      processData();
+    }
   }
   /* USER CODE END 3 */
 }
