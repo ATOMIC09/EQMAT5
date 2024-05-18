@@ -7,5 +7,5 @@
 ../Core/Src/main.c:278:13:MX_GPIO_Init	1
 ../Core/Src/main.c:306:5:_write	2
 ../Core/Src/main.c:318:6:HAL_UART_RxCpltCallback	1
-../Core/Src/main.c:332:6:parseAndStoreCoeffs	4
-../Core/Src/main.c:364:6:Error_Handler	1
+../Core/Src/main.c:332:6:parseAndStoreCoeffs	5
+../Core/Src/main.c:386:6:Error_Handler	1

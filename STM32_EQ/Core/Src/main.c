@@ -352,6 +352,28 @@ void parseAndStoreCoeffs(char *rx_buffer) {
         printf("Parsed High: %f %f %f %f %f %f\n",
                 highBandCoeffs.a0, highBandCoeffs.a1, highBandCoeffs.a2, 
                 highBandCoeffs.b0, highBandCoeffs.b1, highBandCoeffs.b2);
+    } else if (strncmp(rx_buffer, "Reset", 5) == 0) {
+        lowBandCoeffs.a0 = 1.001636;
+        lowBandCoeffs.a1 = -1.999989;
+        lowBandCoeffs.a2 = 0.998364;
+        lowBandCoeffs.b0 = 1.001636;
+        lowBandCoeffs.b1 = -1.999989;
+        lowBandCoeffs.b2 = 0.998364;
+        midBandCoeffs.a0 = 1.049009;
+        midBandCoeffs.a1 = -1.990369;
+        midBandCoeffs.a2 = 0.950991;
+        midBandCoeffs.b0 = 1.049009;
+        midBandCoeffs.b1 = -1.990369;
+        midBandCoeffs.b2 = 0.950991;
+        highBandCoeffs.a0 = 1.304381;
+        highBandCoeffs.a1 = -1.586707;
+        highBandCoeffs.a2 = 0.695619;
+        highBandCoeffs.b0 = 1.304381;
+        highBandCoeffs.b1 = -1.586707;
+        highBandCoeffs.b2 = 0.695619;
+        printf("Coefficients reset!\n");
+    } else {
+        printf("Invalid parameter\n");
     }
 }
 
