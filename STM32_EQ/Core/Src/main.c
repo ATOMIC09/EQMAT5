@@ -53,7 +53,7 @@ UART_HandleTypeDef huart1;
 /* USER CODE BEGIN PV */
 uint8_t tx_buffer[17] = "Serial Ready!\n\r";
 // uint8_t rx_index;
-uint8_t rx_buffer[68];
+uint8_t rx_buffer[70];
 // uint8_t rx_buffer[100];
 // uint8_t transfer_cplt;
 /* USER CODE END PV */
@@ -70,6 +70,7 @@ typedef struct {
   float a0;
   float a1;
   float a2;
+  float b0;
   float b1;
   float b2;
 } FilterCoeffs;
@@ -333,24 +334,24 @@ void parseAndStoreCoeffs(char *rx_buffer) {
     if (strncmp(rx_buffer, "Low", 3) == 0) {
         sscanf(rx_buffer, "Low %f %f %f %f %f %f", 
                &lowBandCoeffs.a0, &lowBandCoeffs.a1, &lowBandCoeffs.a2, 
-               &lowBandCoeffs.b1, &lowBandCoeffs.b2);
-        printf("Parsed Low: %f %f %f %f %f\n", 
+               &lowBandCoeffs.b0, &lowBandCoeffs.b1, &lowBandCoeffs.b2);
+        printf("Parsed Low: %f %f %f %f %f %f\n", 
                lowBandCoeffs.a0, lowBandCoeffs.a1, lowBandCoeffs.a2, 
-               lowBandCoeffs.b1, lowBandCoeffs.b2);
+               lowBandCoeffs.b0, lowBandCoeffs.b1, lowBandCoeffs.b2);
     } else if (strncmp(rx_buffer, "Mid", 3) == 0) {
         sscanf(rx_buffer, "Mid %f %f %f %f %f %f", 
                &midBandCoeffs.a0, &midBandCoeffs.a1, &midBandCoeffs.a2, 
-               &midBandCoeffs.b1, &midBandCoeffs.b2);
-        printf("Parsed Mid: %f %f %f %f %f\n",
+               &midBandCoeffs.b0, &midBandCoeffs.b1, &midBandCoeffs.b2);
+        printf("Parsed Mid: %f %f %f %f %f %f\n",
                 midBandCoeffs.a0, midBandCoeffs.a1, midBandCoeffs.a2, 
-                midBandCoeffs.b1, midBandCoeffs.b2);
+                midBandCoeffs.b0, midBandCoeffs.b1, midBandCoeffs.b2);
     } else if (strncmp(rx_buffer, "High", 4) == 0) {
         sscanf(rx_buffer, "High %f %f %f %f %f %f", 
                &highBandCoeffs.a0, &highBandCoeffs.a1, &highBandCoeffs.a2, 
-               &highBandCoeffs.b1, &highBandCoeffs.b2);
-        printf("Parsed High: %f %f %f %f %f\n",
+               &highBandCoeffs.b0, &highBandCoeffs.b1, &highBandCoeffs.b2);
+        printf("Parsed High: %f %f %f %f %f %f\n",
                 highBandCoeffs.a0, highBandCoeffs.a1, highBandCoeffs.a2, 
-                highBandCoeffs.b1, highBandCoeffs.b2);
+                highBandCoeffs.b0, highBandCoeffs.b1, highBandCoeffs.b2);
     }
 }
 
