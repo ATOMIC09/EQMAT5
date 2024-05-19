@@ -1,0 +1,4 @@
+../Core/Src/peaking_filter.c:12:6:peaking_filter_init	1
+../Core/Src/peaking_filter.c:24:6:peaking_filter_cal_coeff	1
+../Core/Src/peaking_filter.c:46:6:peaking_filter_set_param	1
+../Core/Src/peaking_filter.c:55:7:peaking_filter_update	1

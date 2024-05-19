@@ -25,6 +25,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "peaking_filter.h"
 
 /* USER CODE END Includes */
 
@@ -88,6 +89,14 @@ FilterCoeffs lowBandCoeffs;
 FilterCoeffs midBandCoeffs;
 FilterCoeffs highBandCoeffs;
 
+peaking_filter_data filt;
+peaking_filter_data lowfilt;
+peaking_filter_data midfilt;
+peaking_filter_data highfilt;
+
+void parseAndStoreCoeffs(char *rx_buffer);
+void processData();
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -118,7 +127,10 @@ void processData(){
       leftIn = -2.0f;
     }
     // Compute the left channel output
-    leftOut = leftIn;
+    leftOut = peaking_filter_update(&lowfilt, leftIn);
+    leftOut = peaking_filter_update(&midfilt, leftOut);
+    leftOut = peaking_filter_update(&highfilt, leftOut);
+    
     // Convert back to int16
     outBufPtr[n] = (int16_t)(FLOAT_TO_INT16 * leftOut);
 
@@ -175,6 +187,15 @@ int main(void)
   // Start UART communication
   HAL_UART_Transmit(&huart1, tx_buffer, sizeof(tx_buffer), 10); // Send ready message
   HAL_UART_Receive_IT(&huart1, rx_buffer, sizeof(rx_buffer)); // Start UART receive
+
+  // Initialize filter coefficients
+  peaking_filter_init(&lowfilt);
+  peaking_filter_init(&midfilt);
+  peaking_filter_init(&highfilt);
+
+  // Set default filter coefficients
+  parseAndStoreCoeffs("Reset");
+  
 
   // Start I2S communication
   HAL_I2SEx_TransmitReceive_DMA(&hi2s2, (uint16_t *)dacData, (uint16_t *)adcData, AUDIO_BUFFER_SIZE);
@@ -386,7 +407,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
    */
   // HAL_UART_Transmit(&huart1, rx_buffer, sizeof(rx_buffer), 10); // Echo the received data
   printf("Received UART: %s\n", rx_buffer); // Print the received data to serial
-  parseAndStoreCoeffs(rx_buffer); // Parse the received data and store the coefficients
+
+  // fix warning: pointer targets in passing argument 1 of 'parseAndStoreCoeffs' differ in signedness [-Wpointer-sign]
+  parseAndStoreCoeffs((char *)rx_buffer); // Parse the received data
+  
   memset(rx_buffer, 0, sizeof(rx_buffer)); // Clear the buffer
   HAL_UART_Receive_IT(&huart1, rx_buffer, sizeof(rx_buffer)); // Start the next receive
 }
@@ -400,6 +424,7 @@ void parseAndStoreCoeffs(char *rx_buffer) {
         printf("Parsed Low: %f %f %f %f %f %f\n", 
                lowBandCoeffs.a0, lowBandCoeffs.a1, lowBandCoeffs.a2, 
                lowBandCoeffs.b0, lowBandCoeffs.b1, lowBandCoeffs.b2);
+        peaking_filter_set_param(&filt, lowBandCoeffs.a0, lowBandCoeffs.a1, lowBandCoeffs.a2, lowBandCoeffs.b0, lowBandCoeffs.b1, lowBandCoeffs.b2);
     } else if (strncmp(rx_buffer, "Mid", 3) == 0) {
         sscanf(rx_buffer, "Mid %f %f %f %f %f %f", 
                &midBandCoeffs.a0, &midBandCoeffs.a1, &midBandCoeffs.a2, 
@@ -407,6 +432,7 @@ void parseAndStoreCoeffs(char *rx_buffer) {
         printf("Parsed Mid: %f %f %f %f %f %f\n",
                 midBandCoeffs.a0, midBandCoeffs.a1, midBandCoeffs.a2, 
                 midBandCoeffs.b0, midBandCoeffs.b1, midBandCoeffs.b2);
+        peaking_filter_set_param(&filt, midBandCoeffs.a0, midBandCoeffs.a1, midBandCoeffs.a2, midBandCoeffs.b0, midBandCoeffs.b1, midBandCoeffs.b2);
     } else if (strncmp(rx_buffer, "High", 4) == 0) {
         sscanf(rx_buffer, "High %f %f %f %f %f %f", 
                &highBandCoeffs.a0, &highBandCoeffs.a1, &highBandCoeffs.a2, 
@@ -414,6 +440,7 @@ void parseAndStoreCoeffs(char *rx_buffer) {
         printf("Parsed High: %f %f %f %f %f %f\n",
                 highBandCoeffs.a0, highBandCoeffs.a1, highBandCoeffs.a2, 
                 highBandCoeffs.b0, highBandCoeffs.b1, highBandCoeffs.b2);
+        peaking_filter_set_param(&filt, highBandCoeffs.a0, highBandCoeffs.a1, highBandCoeffs.a2, highBandCoeffs.b0, highBandCoeffs.b1, highBandCoeffs.b2);
     } else if (strncmp(rx_buffer, "Reset", 5) == 0) {
         lowBandCoeffs.a0 = 1.001636;
         lowBandCoeffs.a1 = -1.999989;
@@ -434,6 +461,7 @@ void parseAndStoreCoeffs(char *rx_buffer) {
         highBandCoeffs.b1 = -1.586707;
         highBandCoeffs.b2 = 0.695619;
         printf("Coefficients reset!\n");
+        peaking_filter_set_param(&filt, lowBandCoeffs.a0, lowBandCoeffs.a1, lowBandCoeffs.a2, lowBandCoeffs.b0, lowBandCoeffs.b1, lowBandCoeffs.b2);
     } else {
         printf("Invalid parameter\n");
     }
