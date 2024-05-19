@@ -141,7 +141,9 @@ void processData(){
       rightIn = -2.0f;
     }
     // Compute the right channel output
-    rightOut = rightIn;
+    rightOut = peaking_filter_update(&lowfilt, rightIn);
+    rightOut = peaking_filter_update(&midfilt, rightOut);
+    rightOut = peaking_filter_update(&highfilt, rightOut);
     // Convert back to int16
     outBufPtr[n + 1] = (int16_t)(FLOAT_TO_INT16 * rightOut);
   }
@@ -410,7 +412,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
   // fix warning: pointer targets in passing argument 1 of 'parseAndStoreCoeffs' differ in signedness [-Wpointer-sign]
   parseAndStoreCoeffs((char *)rx_buffer); // Parse the received data
-  
+
   memset(rx_buffer, 0, sizeof(rx_buffer)); // Clear the buffer
   HAL_UART_Receive_IT(&huart1, rx_buffer, sizeof(rx_buffer)); // Start the next receive
 }
