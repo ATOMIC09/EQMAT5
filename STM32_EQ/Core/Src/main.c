@@ -36,8 +36,6 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-#define AUDIO_BUFFER_SIZE 8
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -53,11 +51,12 @@ DMA_HandleTypeDef hdma_spi2_tx;
 UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
-
-uint8_t tx_buffer[17] = "Serial Ready!\n\r";
-uint8_t rx_buffer[70];
-uint16_t rxBuf[AUDIO_BUFFER_SIZE];
-uint16_t txBuf[AUDIO_BUFFER_SIZE];
+// float l_a0, l_a1, l_a2, l_b1, l_b2, lin_z1, lin_z2, lout_z1, lout_z2;
+// float r_a0, r_a1, r_a2, r_b1, r_b2, rin_z1, rin_z2, rout_z1, rout_z2;
+// uint8_t tx_buffer[17] = "Serial Ready!\n\r";
+// uint8_t rx_buffer[70];
+uint16_t rxBuf[256];
+uint16_t txBuf[256];
 
 /* USER CODE END PV */
 
@@ -69,20 +68,20 @@ static void MX_I2S2_Init(void);
 static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
-typedef struct {
-  float a0;
-  float a1;
-  float a2;
-  float b0;
-  float b1;
-  float b2;
-} FilterCoeffs;
+// typedef struct {
+//   float a0;
+//   float a1;
+//   float a2;
+//   float b0;
+//   float b1;
+//   float b2;
+// } FilterCoeffs;
 
-FilterCoeffs lowBandCoeffs;
-FilterCoeffs midBandCoeffs;
-FilterCoeffs highBandCoeffs;
+// FilterCoeffs lowBandCoeffs;
+// FilterCoeffs midBandCoeffs;
+// FilterCoeffs highBandCoeffs;
 
-void parseAndStoreCoeffs(char *rx_buffer);
+// void parseAndStoreCoeffs(char *rx_buffer);
 
 /* USER CODE END PFP */
 
@@ -126,11 +125,28 @@ int main(void)
   /* USER CODE BEGIN 2 */
   
   // Start UART communication
-  HAL_UART_Transmit(&huart1, tx_buffer, sizeof(tx_buffer), 10); // Send ready message
-  HAL_UART_Receive_IT(&huart1, rx_buffer, sizeof(rx_buffer)); // Start UART receive
+  // HAL_UART_Transmit(&huart1, tx_buffer, sizeof(tx_buffer), 10); // Send ready message
+  // HAL_UART_Receive_IT(&huart1, rx_buffer, sizeof(rx_buffer)); // Start UART receive
 
   // Set default filter coefficients
-  parseAndStoreCoeffs("Reset");
+  // parseAndStoreCoeffs("Reset");
+
+  HAL_I2SEx_TransmitReceive_DMA (&hi2s2, txBuf, rxBuf, 4);
+
+  // //left-channel, High-Pass, 1kHz, fs=96kHz, q=0.7
+  // l_a0 = 0.9543457485325094f;
+  // l_a1 = -1.9086914970650188f;
+  // l_a2 = 0.9543457485325094f;
+  // l_b1 = -1.9066459797557103f;
+  // l_b2 = 0.9107370143743273f;
+
+  // //right-channel, Low-Pass, 1kHz, fs)96 kHz, q=0.7
+  // r_a0 = 0.0010227586546542474f;
+  // r_a1 = 0.002045517309308495f;
+  // r_a2 = 0.0010227586546542474f;
+  // r_b1 = -1.9066459797557103f;
+  // r_b2 = 0.9107370143743273f;
+
 
   /* USER CODE END 2 */
 
@@ -325,79 +341,135 @@ int _write(int file, char *ptr, int len)
   return len;
 }
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-  /* Prevent unused argument(s) compilation warning */
-  UNUSED(huart);
-  /* NOTE: This function should not be modified, when the callback is needed,
-           the HAL_UART_RxCpltCallback could be implemented in the user file
-   */
-  // HAL_UART_Transmit(&huart1, rx_buffer, sizeof(rx_buffer), 10); // Echo the received data
-  printf("Received UART: %s\n", rx_buffer); // Print the received data to serial
+// void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+// {
+//   /* Prevent unused argument(s) compilation warning */
+//   UNUSED(huart);
+//   /* NOTE: This function should not be modified, when the callback is needed,
+//            the HAL_UART_RxCpltCallback could be implemented in the user file
+//    */
+//   // HAL_UART_Transmit(&huart1, rx_buffer, sizeof(rx_buffer), 10); // Echo the received data
+//   printf("Received UART: %s\n", rx_buffer); // Print the received data to serial
 
-  // fix warning: pointer targets in passing argument 1 of 'parseAndStoreCoeffs' differ in signedness [-Wpointer-sign]
-  parseAndStoreCoeffs((char *)rx_buffer); // Parse the received data
+//   // fix warning: pointer targets in passing argument 1 of 'parseAndStoreCoeffs' differ in signedness [-Wpointer-sign]
+//   parseAndStoreCoeffs((char *)rx_buffer); // Parse the received data
 
-  memset(rx_buffer, 0, sizeof(rx_buffer)); // Clear the buffer
-  HAL_UART_Receive_IT(&huart1, rx_buffer, sizeof(rx_buffer)); // Start the next receive
-}
+//   memset(rx_buffer, 0, sizeof(rx_buffer)); // Clear the buffer
+//   HAL_UART_Receive_IT(&huart1, rx_buffer, sizeof(rx_buffer)); // Start the next receive
+// }
 
-void parseAndStoreCoeffs(char *rx_buffer) {
-    // Determine which band the coefficients are for
-    if (strncmp(rx_buffer, "Low", 3) == 0) {
-        sscanf(rx_buffer, "Low %f %f %f %f %f %f", 
-               &lowBandCoeffs.a0, &lowBandCoeffs.a1, &lowBandCoeffs.a2, 
-               &lowBandCoeffs.b0, &lowBandCoeffs.b1, &lowBandCoeffs.b2);
-        printf("Parsed Low: %f %f %f %f %f %f\n", 
-               lowBandCoeffs.a0, lowBandCoeffs.a1, lowBandCoeffs.a2, 
-               lowBandCoeffs.b0, lowBandCoeffs.b1, lowBandCoeffs.b2);
-    } else if (strncmp(rx_buffer, "Mid", 3) == 0) {
-        sscanf(rx_buffer, "Mid %f %f %f %f %f %f", 
-               &midBandCoeffs.a0, &midBandCoeffs.a1, &midBandCoeffs.a2, 
-               &midBandCoeffs.b0, &midBandCoeffs.b1, &midBandCoeffs.b2);
-        printf("Parsed Mid: %f %f %f %f %f %f\n",
-                midBandCoeffs.a0, midBandCoeffs.a1, midBandCoeffs.a2, 
-                midBandCoeffs.b0, midBandCoeffs.b1, midBandCoeffs.b2);
-    } else if (strncmp(rx_buffer, "High", 4) == 0) {
-        sscanf(rx_buffer, "High %f %f %f %f %f %f", 
-               &highBandCoeffs.a0, &highBandCoeffs.a1, &highBandCoeffs.a2, 
-               &highBandCoeffs.b0, &highBandCoeffs.b1, &highBandCoeffs.b2);
-        printf("Parsed High: %f %f %f %f %f %f\n",
-                highBandCoeffs.a0, highBandCoeffs.a1, highBandCoeffs.a2, 
-                highBandCoeffs.b0, highBandCoeffs.b1, highBandCoeffs.b2);
-    } else if (strncmp(rx_buffer, "Reset", 5) == 0) {
-        lowBandCoeffs.a0 = 1.001636;
-        lowBandCoeffs.a1 = -1.999989;
-        lowBandCoeffs.a2 = 0.998364;
-        lowBandCoeffs.b0 = 1.001636;
-        lowBandCoeffs.b1 = -1.999989;
-        lowBandCoeffs.b2 = 0.998364;
-        midBandCoeffs.a0 = 1.049009;
-        midBandCoeffs.a1 = -1.990369;
-        midBandCoeffs.a2 = 0.950991;
-        midBandCoeffs.b0 = 1.049009;
-        midBandCoeffs.b1 = -1.990369;
-        midBandCoeffs.b2 = 0.950991;
-        highBandCoeffs.a0 = 1.304381;
-        highBandCoeffs.a1 = -1.586707;
-        highBandCoeffs.a2 = 0.695619;
-        highBandCoeffs.b0 = 1.304381;
-        highBandCoeffs.b1 = -1.586707;
-        highBandCoeffs.b2 = 0.695619;
-        printf("Coefficients reset!\n");
-    } else {
-        printf("Invalid parameter\n");
-    }
-}
+// void parseAndStoreCoeffs(char *rx_buffer) {
+//     // Determine which band the coefficients are for
+//     if (strncmp(rx_buffer, "Low", 3) == 0) {
+//         sscanf(rx_buffer, "Low %f %f %f %f %f %f", 
+//                &lowBandCoeffs.a0, &lowBandCoeffs.a1, &lowBandCoeffs.a2, 
+//                &lowBandCoeffs.b0, &lowBandCoeffs.b1, &lowBandCoeffs.b2);
+//         printf("Parsed Low: %f %f %f %f %f %f\n", 
+//                lowBandCoeffs.a0, lowBandCoeffs.a1, lowBandCoeffs.a2, 
+//                lowBandCoeffs.b0, lowBandCoeffs.b1, lowBandCoeffs.b2);
+//     } else if (strncmp(rx_buffer, "Mid", 3) == 0) {
+//         sscanf(rx_buffer, "Mid %f %f %f %f %f %f", 
+//                &midBandCoeffs.a0, &midBandCoeffs.a1, &midBandCoeffs.a2, 
+//                &midBandCoeffs.b0, &midBandCoeffs.b1, &midBandCoeffs.b2);
+//         printf("Parsed Mid: %f %f %f %f %f %f\n",
+//                 midBandCoeffs.a0, midBandCoeffs.a1, midBandCoeffs.a2, 
+//                 midBandCoeffs.b0, midBandCoeffs.b1, midBandCoeffs.b2);
+//     } else if (strncmp(rx_buffer, "High", 4) == 0) {
+//         sscanf(rx_buffer, "High %f %f %f %f %f %f", 
+//                &highBandCoeffs.a0, &highBandCoeffs.a1, &highBandCoeffs.a2, 
+//                &highBandCoeffs.b0, &highBandCoeffs.b1, &highBandCoeffs.b2);
+//         printf("Parsed High: %f %f %f %f %f %f\n",
+//                 highBandCoeffs.a0, highBandCoeffs.a1, highBandCoeffs.a2, 
+//                 highBandCoeffs.b0, highBandCoeffs.b1, highBandCoeffs.b2);
+//     } else if (strncmp(rx_buffer, "Reset", 5) == 0) {
+//         lowBandCoeffs.a0 = 1.001636;
+//         lowBandCoeffs.a1 = -1.999989;
+//         lowBandCoeffs.a2 = 0.998364;
+//         lowBandCoeffs.b0 = 1.001636;
+//         lowBandCoeffs.b1 = -1.999989;
+//         lowBandCoeffs.b2 = 0.998364;
+//         midBandCoeffs.a0 = 1.049009;
+//         midBandCoeffs.a1 = -1.990369;
+//         midBandCoeffs.a2 = 0.950991;
+//         midBandCoeffs.b0 = 1.049009;
+//         midBandCoeffs.b1 = -1.990369;
+//         midBandCoeffs.b2 = 0.950991;
+//         highBandCoeffs.a0 = 1.304381;
+//         highBandCoeffs.a1 = -1.586707;
+//         highBandCoeffs.a2 = 0.695619;
+//         highBandCoeffs.b0 = 1.304381;
+//         highBandCoeffs.b1 = -1.586707;
+//         highBandCoeffs.b2 = 0.695619;
+//         printf("Coefficients reset!\n");
+//     } else {
+//         printf("Invalid parameter\n");
+//     }
+// }
+
+// int Calc_IIR_Left (int inSample) {
+// 	float inSampleF = (float)inSample;
+// 	float outSampleF =
+// 			l_a0 * inSampleF
+// 			+ l_a1 * lin_z1
+// 			+ l_a2 * lin_z2
+// 			- l_b1 * lout_z1
+// 			- l_b2 * lout_z2;
+// 	lin_z2 = lin_z1;
+// 	lin_z1 = inSampleF;
+// 	lout_z2 = lout_z1;
+// 	lout_z1 = outSampleF;
+
+// 	return (int) outSampleF;
+// }
+
+// int Calc_IIR_Right (int inSample) {
+// 	float inSampleF = (float)inSample;
+// 	float outSampleF =
+// 			r_a0 * inSampleF
+// 			+ r_a1 * rin_z1
+// 			+ r_a2 * rin_z2
+// 			- r_b1 * rout_z1
+// 			- r_b2 * rout_z2;
+// 	rin_z2 = rin_z1;
+// 	rin_z1 = inSampleF;
+// 	rout_z2 = rout_z1;
+// 	rout_z1 = outSampleF;
+
+// 	return (int) outSampleF;
+// }
 
 void HAL_I2S_RxHalfCpltCallback(I2S_HandleTypeDef *hi2s)
 {
-  
+  //restore signed 24 bit sample from 16-bit buffers
+	int lSample = (int) (rxBuf[0]<<16)|rxBuf[1];
+	int rSample = (int) (rxBuf[2]<<16)|rxBuf[3];
+
+	//run HP on left channel and LP on right channel
+	// lSample = Calc_IIR_Left(lSample);
+	// rSample = Calc_IIR_Left(rSample);
+
+	//restore to buffer
+	txBuf[0] = (lSample>>16)&0xFFFF;
+	txBuf[1] = lSample&0xFFFF;
+	txBuf[2] = (rSample>>16)&0xFFFF;
+	txBuf[3] = rSample&0xFFFF;
 }
 
 void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s)
 {
-  
+  //restore signed 24 bit sample from 16-bit buffers
+	int lSample = (int) (rxBuf[4]<<16)|rxBuf[5];
+	int rSample = (int) (rxBuf[6]<<16)|rxBuf[7];
+
+	//run HP on left channel and LP on right channel
+	// lSample = Calc_IIR_Left(lSample);
+	// rSample = Calc_IIR_Left(rSample);
+
+	//restore to buffer
+	txBuf[4] = (lSample>>16)&0xFFFF;
+	txBuf[5] = lSample&0xFFFF;
+	txBuf[6] = (rSample>>16)&0xFFFF;
+	txBuf[7] = rSample&0xFFFF;
 }
 
 /* USER CODE END 4 */
