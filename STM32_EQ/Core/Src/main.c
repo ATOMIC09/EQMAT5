@@ -88,6 +88,52 @@ static void MX_USART1_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+void HAL_I2S_RxHalfCpltCallback(I2S_HandleTypeDef *hi2s)
+{
+  inBufPtr = &adcData[0];
+  outBufPtr = &dacData[0];
+  dataReady = 1;
+}
+
+void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s)
+{
+  inBufPtr = &adcData[AUDIO_BUFFER_SIZE / 2];
+  outBufPtr = &dacData[AUDIO_BUFFER_SIZE / 2];
+  dataReady = 1;
+}
+
+void processData(){
+  static float leftIn, leftOut, rightIn, rightOut;
+
+  for (uint8_t n = 0; n < (AUDIO_BUFFER_SIZE / 2) - 1; n += 2){
+    // Left channel
+    // Convert ADC data to float
+    leftIn = INT16_TO_FLOAT * inBufPtr[n];
+    if (leftIn > 1.0f){
+      leftIn = -2.0f;
+    }
+    // Compute the left channel output
+    leftOut = peaking_filter_update(&lowfilt, leftIn);
+    leftOut = peaking_filter_update(&midfilt, leftOut);
+    leftOut = peaking_filter_update(&highfilt, leftOut);
+    
+    // Convert back to int16
+    outBufPtr[n] = (int16_t)(FLOAT_TO_INT16 * leftOut);
+
+    // Right channel
+    // Convert ADC data to float
+    rightIn = INT16_TO_FLOAT * inBufPtr[n + 1];
+    if (rightIn > 1.0f){
+      rightIn = -2.0f;
+    }
+    // Compute the right channel output
+    rightOut = rightIn;
+    // Convert back to int16
+    outBufPtr[n + 1] = (int16_t)(FLOAT_TO_INT16 * rightOut);
+  }
+  dataReady = 0;
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -351,12 +397,12 @@ int _write(int file, char *ptr, int len)
 //   // HAL_UART_Transmit(&huart1, rx_buffer, sizeof(rx_buffer), 10); // Echo the received data
 //   printf("Received UART: %s\n", rx_buffer); // Print the received data to serial
 
-//   // fix warning: pointer targets in passing argument 1 of 'parseAndStoreCoeffs' differ in signedness [-Wpointer-sign]
-//   parseAndStoreCoeffs((char *)rx_buffer); // Parse the received data
-
-//   memset(rx_buffer, 0, sizeof(rx_buffer)); // Clear the buffer
-//   HAL_UART_Receive_IT(&huart1, rx_buffer, sizeof(rx_buffer)); // Start the next receive
-// }
+  // fix warning: pointer targets in passing argument 1 of 'parseAndStoreCoeffs' differ in signedness [-Wpointer-sign]
+  parseAndStoreCoeffs((char *)rx_buffer); // Parse the received data
+  
+  memset(rx_buffer, 0, sizeof(rx_buffer)); // Clear the buffer
+  HAL_UART_Receive_IT(&huart1, rx_buffer, sizeof(rx_buffer)); // Start the next receive
+}
 
 // void parseAndStoreCoeffs(char *rx_buffer) {
 //     // Determine which band the coefficients are for
