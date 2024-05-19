@@ -398,11 +398,11 @@ int _write(int file, char *ptr, int len)
 //   printf("Received UART: %s\n", rx_buffer); // Print the received data to serial
 
   // fix warning: pointer targets in passing argument 1 of 'parseAndStoreCoeffs' differ in signedness [-Wpointer-sign]
-  parseAndStoreCoeffs((char *)rx_buffer); // Parse the received data
+//   parseAndStoreCoeffs((char *)rx_buffer); // Parse the received data
   
-  memset(rx_buffer, 0, sizeof(rx_buffer)); // Clear the buffer
-  HAL_UART_Receive_IT(&huart1, rx_buffer, sizeof(rx_buffer)); // Start the next receive
-}
+//   memset(rx_buffer, 0, sizeof(rx_buffer)); // Clear the buffer
+//   HAL_UART_Receive_IT(&huart1, rx_buffer, sizeof(rx_buffer)); // Start the next receive
+// }
 
 // void parseAndStoreCoeffs(char *rx_buffer) {
 //     // Determine which band the coefficients are for

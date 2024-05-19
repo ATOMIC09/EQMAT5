@@ -18,6 +18,8 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include <stdio.h>
+#include <string.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -58,11 +60,31 @@ static void MX_I2S2_Init(void);
 static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
-float l_a0, l_a1, l_a2, l_b1, l_b2, lin_z1, lin_z2, lout_z1, lout_z2;
-float r_a0, r_a1, r_a2, r_b1, r_b2, rin_z1, rin_z2, rout_z1, rout_z2;
+uint8_t tx_buffer[17] = "Serial Ready!\n\r";
+uint8_t rx_buffer[75];
+float a0, a1, a2, b1, b2, in_z1, in_z2, out_z1, out_z2;
 
 uint16_t rxBuf[8];
 uint16_t txBuf[8];
+
+int isConfigComplete = 1;
+
+typedef struct {
+  float a0;
+  float a1;
+  float a2;
+  float b0;
+  float b1;
+  float b2;
+} FilterCoeffs;
+
+FilterCoeffs lowBandCoeffs;
+FilterCoeffs midBandCoeffs;
+FilterCoeffs highBandCoeffs;
+
+void parseAndStoreCoeffs(char *rx_buffer);
+int Calc_IIR (int inSample);
+int CalPeakingLow(int inSample);
 
 /* USER CODE END PFP */
 
@@ -105,22 +127,22 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
+  // Start UART communication
+  HAL_UART_Transmit(&huart1, tx_buffer, sizeof(tx_buffer), 10); // Send ready message
+  HAL_UART_Receive_IT(&huart1, rx_buffer, sizeof(rx_buffer)); // Start UART receive
+
+  // Set default filter coefficients
+  parseAndStoreCoeffs("Reset");
+
   HAL_I2SEx_TransmitReceive_DMA (&hi2s2, txBuf, rxBuf, 4);
 
 
   //left-channel, High-Pass, 1kHz, fs=96kHz, q=0.7
-  l_a0 = 0.9543457485325094f;
-  l_a1 = -1.9086914970650188f;
-  l_a2 = 0.9543457485325094f;
-  l_b1 = -1.9066459797557103f;
-  l_b2 = 0.9107370143743273f;
-
-  //right-channel, Low-Pass, 1kHz, fs)96 kHz, q=0.7
-  r_a0 = 0.0010227586546542474f;
-  r_a1 = 0.002045517309308495f;
-  r_a2 = 0.0010227586546542474f;
-  r_b1 = -1.9066459797557103f;
-  r_b2 = 0.9107370143743273f;
+  a0 = 1.3302048310381533f;
+  a1 = -1.9741980580247258f;
+  a2 = 0.6482292061275035f;
+  b1 = -1.9741980580247258f;
+  b2 = 0.978434037165657f;
 
   /* USER CODE END 2 */
 
@@ -131,6 +153,9 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    // Blink the LED while working
+    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2);
+    HAL_Delay(1000);
   }
   /* USER CODE END 3 */
 }
@@ -299,55 +324,130 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-int Calc_IIR_Left (int inSample) {
+int _write(int file, char *ptr, int len)
+{
+  (void)file;
+  int DataIdx;
+
+  for (DataIdx = 0; DataIdx < len; DataIdx++)
+  {
+	  ITM_SendChar(*ptr++);
+  }
+  return len;
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  /* Prevent unused argument(s) compilation warning */
+  UNUSED(huart);
+  /* NOTE: This function should not be modified, when the callback is needed,
+           the HAL_UART_RxCpltCallback could be implemented in the user file
+   */
+  // HAL_UART_Transmit(&huart1, rx_buffer, sizeof(rx_buffer), 10); // Echo the received data
+  printf("Received UART: %s\n", rx_buffer); // Print the received data to serial
+
+  isConfigComplete = 0;
+  parseAndStoreCoeffs((char *)rx_buffer); // Parse the received data
+  
+  memset(rx_buffer, 0, sizeof(rx_buffer)); // Clear the buffer
+  HAL_UART_Receive_IT(&huart1, rx_buffer, sizeof(rx_buffer)); // Start the next receive
+}
+
+void parseAndStoreCoeffs(char *rx_buffer) {
+    // Determine which band the coefficients are for
+    if (strncmp(rx_buffer, "Low", 3) == 0) {
+        sscanf(rx_buffer, "Low %f %f %f %f %f %f", 
+               &lowBandCoeffs.a0, &lowBandCoeffs.a1, &lowBandCoeffs.a2, 
+               &lowBandCoeffs.b0, &lowBandCoeffs.b1, &lowBandCoeffs.b2);
+        printf("Parsed Low: %f %f %f %f %f %f\n", 
+               lowBandCoeffs.a0, lowBandCoeffs.a1, lowBandCoeffs.a2, 
+               lowBandCoeffs.b0, lowBandCoeffs.b1, lowBandCoeffs.b2);
+    } else if (strncmp(rx_buffer, "Mid", 3) == 0) {
+        sscanf(rx_buffer, "Mid %f %f %f %f %f %f", 
+               &midBandCoeffs.a0, &midBandCoeffs.a1, &midBandCoeffs.a2, 
+               &midBandCoeffs.b0, &midBandCoeffs.b1, &midBandCoeffs.b2);
+        printf("Parsed Mid: %f %f %f %f %f %f\n",
+                midBandCoeffs.a0, midBandCoeffs.a1, midBandCoeffs.a2, 
+                midBandCoeffs.b0, midBandCoeffs.b1, midBandCoeffs.b2);
+    } else if (strncmp(rx_buffer, "High", 4) == 0) {
+        sscanf(rx_buffer, "High %f %f %f %f %f %f", 
+               &highBandCoeffs.a0, &highBandCoeffs.a1, &highBandCoeffs.a2, 
+               &highBandCoeffs.b0, &highBandCoeffs.b1, &highBandCoeffs.b2);
+        printf("Parsed High: %f %f %f %f %f %f\n",
+                highBandCoeffs.a0, highBandCoeffs.a1, highBandCoeffs.a2, 
+                highBandCoeffs.b0, highBandCoeffs.b1, highBandCoeffs.b2);
+    } else if (strncmp(rx_buffer, "Reset", 5) == 0) {
+        lowBandCoeffs.a0 = 1.000000f;
+        lowBandCoeffs.a1 = -1.967791f;
+        lowBandCoeffs.a2 = 0.967802f;
+        lowBandCoeffs.b0 = 1.016362f;
+        lowBandCoeffs.b1 = -1.967791f;
+        lowBandCoeffs.b2 = 0.967802f;
+        midBandCoeffs.a0 = 1.049009f;
+        midBandCoeffs.a1 = -1.990369f;
+        midBandCoeffs.a2 = 0.950991f;
+        midBandCoeffs.b0 = 1.049009f;
+        midBandCoeffs.b1 = -1.990369f;
+        midBandCoeffs.b2 = 0.950991f;
+        highBandCoeffs.a0 = 1.304381f;
+        highBandCoeffs.a1 = -1.586707f;
+        highBandCoeffs.a2 = 0.695619f;
+        highBandCoeffs.b0 = 1.304381f;
+        highBandCoeffs.b1 = -1.586707f;
+        highBandCoeffs.b2 = 0.695619f;
+        printf("Coefficients reset!\n");
+    } else {
+        printf("Invalid parameter\n");
+    }
+    isConfigComplete = 1;
+}
+
+int Calc_IIR (int inSample) {
 	float inSampleF = (float)inSample;
 	float outSampleF =
-			l_a0 * inSampleF
-			+ l_a1 * lin_z1
-			+ l_a2 * lin_z2
-			- l_b1 * lout_z1
-			- l_b2 * lout_z2;
-	lin_z2 = lin_z1;
-	lin_z1 = inSampleF;
-	lout_z2 = lout_z1;
-	lout_z1 = outSampleF;
+			a0 * inSampleF
+			+ a1 * in_z1
+			+ a2 * in_z2
+			- b1 * out_z1
+			- b2 * out_z2;
+	in_z2 = in_z1;
+	in_z1 = inSampleF;
+	out_z2 = out_z1;
+	out_z1 = outSampleF;
 
 	return (int) outSampleF;
 }
 
-int Calc_IIR_Right (int inSample) {
-	float inSampleF = (float)inSample;
-	float outSampleF =
-			r_a0 * inSampleF
-			+ r_a1 * rin_z1
-			+ r_a2 * rin_z2
-			- r_b1 * rout_z1
-			- r_b2 * rout_z2;
-	rin_z2 = rin_z1;
-	rin_z1 = inSampleF;
-	rout_z2 = rout_z1;
-	rout_z1 = outSampleF;
-
-	return (int) outSampleF;
+int CalPeakingLow(int inSample) {
+  float inSampleF = (float)inSample;
+  float outSampleF =
+      lowBandCoeffs.a0 * inSampleF
+      + lowBandCoeffs.a1 * in_z1
+      + lowBandCoeffs.a2 * in_z2
+      - lowBandCoeffs.b1 * out_z1
+      - lowBandCoeffs.b2 * out_z2;
+  in_z2 = in_z1;
+  in_z1 = inSampleF;
+  out_z2 = out_z1;
+  out_z1 = outSampleF;
+  
+  return (int) outSampleF;
 }
+
 
 void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
-
-	//restore signed 24 bit sample from 16-bit buffers
+  //restore signed 24 bit sample from 16-bit buffers
 	int lSample = (int) (rxBuf[0]<<16)|rxBuf[1];
 	int rSample = (int) (rxBuf[2]<<16)|rxBuf[3];
 
-	// divide by 2 (rightshift) -> -3dB per sample
-	lSample = lSample>>1;
-	rSample = rSample>>1;
-
-	//sum to mono
-	lSample = rSample + lSample;
-	rSample = lSample;
-
 	//run HP on left channel and LP on right channel
-	lSample = Calc_IIR_Left(lSample);
-	rSample = Calc_IIR_Right(rSample);
+	// lSample = Calc_IIR(lSample);
+	// rSample = Calc_IIR(rSample);
+  if (isConfigComplete == 1) {
+    lSample = CalPeakingLow(lSample);
+    rSample = CalPeakingLow(rSample);
+  }
+
 
 	//restore to buffer
 	txBuf[0] = (lSample>>16)&0xFFFF;
@@ -357,22 +457,17 @@ void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
 }
 
 void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s){
-
 	//restore signed 24 bit sample from 16-bit buffers
 	int lSample = (int) (rxBuf[4]<<16)|rxBuf[5];
 	int rSample = (int) (rxBuf[6]<<16)|rxBuf[7];
 
-	// divide by 2 (rightshift) -> -3dB per sample
-	lSample = lSample>>1;
-	rSample = rSample>>1;
-
-	//sum to mono
-	lSample = rSample + lSample;
-	rSample = lSample;
-
 	//run HP on left channel and LP on right channel
-	lSample = Calc_IIR_Left(lSample);
-	rSample = Calc_IIR_Right(rSample);
+	// lSample = Calc_IIR(lSample);
+	// rSample = Calc_IIR(rSample);
+  if (isConfigComplete == 1) {
+    lSample = CalPeakingLow(lSample);
+    rSample = CalPeakingLow(rSample);
+  }
 
 	//restore to buffer
 	txBuf[4] = (lSample>>16)&0xFFFF;
