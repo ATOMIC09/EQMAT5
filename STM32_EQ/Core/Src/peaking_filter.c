@@ -9,6 +9,7 @@
 #include "peaking_filter.h"
 //#include <stdio.h>
 
+
 void peaking_filter_init(peaking_filter_data *filt) {
     // Initialize filter memory
     filt -> x[0] = 0.0f;
