@@ -87,6 +87,7 @@ FilterCoeffs highBandCoeffs;
 
 void parseAndStoreCoeffs(char *rx_buffer);
 int CalPeakingLow(int inSample);
+// void addFsuffix(void);
 
 /* USER CODE END PFP */
 
@@ -349,32 +350,18 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 void parseAndStoreCoeffs(char *rx_buffer) {
     // Determine which band the coefficients are for
-    if (strncmp(rx_buffer, "Low", 3) == 0) {
-        sscanf(rx_buffer, "Low %f %f %f %f %f %f", 
-               &lowBandCoeffs.a0, &lowBandCoeffs.a1, &lowBandCoeffs.a2, 
-               &lowBandCoeffs.b0, &lowBandCoeffs.b1, &lowBandCoeffs.b2);
-        printf("Parsed Low: %f %f %f %f %f %f\n", 
-               lowBandCoeffs.a0, lowBandCoeffs.a1, lowBandCoeffs.a2, 
-               lowBandCoeffs.b0, lowBandCoeffs.b1, lowBandCoeffs.b2);
-    } else if (strncmp(rx_buffer, "MidLow", 6) == 0) {
-        sscanf(rx_buffer, "MidLow %f %f %f %f %f %f", 
+    if (strncmp(rx_buffer, "LowMid", 6) == 0) {
+        sscanf(rx_buffer, "LowMid %f %f %f %f %f %f", 
                &midLowCoeffs.a0, &midLowCoeffs.a1, &midLowCoeffs.a2, 
                &midLowCoeffs.b0, &midLowCoeffs.b1, &midLowCoeffs.b2);
-        printf("Parsed MidLow: %f %f %f %f %f %f\n",
+        printf("Parsed LowMid: %f %f %f %f %f %f\n",
                 midLowCoeffs.a0, midLowCoeffs.a1, midLowCoeffs.a2, 
                 midLowCoeffs.b0, midLowCoeffs.b1, midLowCoeffs.b2);
-    } else if (strncmp(rx_buffer, "Mid", 3) == 0) {
-        sscanf(rx_buffer, "Mid %f %f %f %f %f %f", 
-               &midBandCoeffs.a0, &midBandCoeffs.a1, &midBandCoeffs.a2, 
-               &midBandCoeffs.b0, &midBandCoeffs.b1, &midBandCoeffs.b2);
-        printf("Parsed Mid: %f %f %f %f %f %f\n",
-                midBandCoeffs.a0, midBandCoeffs.a1, midBandCoeffs.a2, 
-                midBandCoeffs.b0, midBandCoeffs.b1, midBandCoeffs.b2);
-    } else if (strncmp(rx_buffer, "MidHigh", 7) == 0) {
-        sscanf(rx_buffer, "MidHigh %f %f %f %f %f %f", 
+    } else if (strncmp(rx_buffer, "HighMid", 7) == 0) {
+        sscanf(rx_buffer, "HighMid %f %f %f %f %f %f", 
                &midHighCoeffs.a0, &midHighCoeffs.a1, &midHighCoeffs.a2, 
                &midHighCoeffs.b0, &midHighCoeffs.b1, &midHighCoeffs.b2);
-        printf("Parsed MidHigh: %f %f %f %f %f %f\n",
+        printf("Parsed HighMid: %f %f %f %f %f %f\n",
                 midHighCoeffs.a0, midHighCoeffs.a1, midHighCoeffs.a2, 
                 midHighCoeffs.b0, midHighCoeffs.b1, midHighCoeffs.b2);
     } else if (strncmp(rx_buffer, "High", 4) == 0) {
@@ -384,43 +371,91 @@ void parseAndStoreCoeffs(char *rx_buffer) {
         printf("Parsed High: %f %f %f %f %f %f\n",
                 highBandCoeffs.a0, highBandCoeffs.a1, highBandCoeffs.a2, 
                 highBandCoeffs.b0, highBandCoeffs.b1, highBandCoeffs.b2);
+    } else if (strncmp(rx_buffer, "Mid", 3) == 0) {
+        sscanf(rx_buffer, "Mid %f %f %f %f %f %f", 
+               &midBandCoeffs.a0, &midBandCoeffs.a1, &midBandCoeffs.a2, 
+               &midBandCoeffs.b0, &midBandCoeffs.b1, &midBandCoeffs.b2);
+        printf("Parsed Mid: %f %f %f %f %f %f\n",
+                midBandCoeffs.a0, midBandCoeffs.a1, midBandCoeffs.a2, 
+                midBandCoeffs.b0, midBandCoeffs.b1, midBandCoeffs.b2);
+    } else if (strncmp(rx_buffer, "Low", 3) == 0) {
+        sscanf(rx_buffer, "Low %f %f %f %f %f %f", 
+               &lowBandCoeffs.a0, &lowBandCoeffs.a1, &lowBandCoeffs.a2, 
+               &lowBandCoeffs.b0, &lowBandCoeffs.b1, &lowBandCoeffs.b2);
+        printf("Parsed Low: %f %f %f %f %f %f\n", 
+               lowBandCoeffs.a0, lowBandCoeffs.a1, lowBandCoeffs.a2, 
+               lowBandCoeffs.b0, lowBandCoeffs.b1, lowBandCoeffs.b2);
     } else if (strncmp(rx_buffer, "Reset", 5) == 0) {
         lowBandCoeffs.a0 = 1.000000f;
-        lowBandCoeffs.a1 = -1.996722f;
-        lowBandCoeffs.a2 = 0.996733f;
+        lowBandCoeffs.a1 = -1.9967221676279703f;
+        lowBandCoeffs.a2 = 0.9967328593303515f;
         lowBandCoeffs.b0 = 0.0f; // Unused
-        lowBandCoeffs.b1 = -1.996722f;
-        lowBandCoeffs.b2 = 0.996733f;
+        lowBandCoeffs.b1 = -1.9967221676279703f;
+        lowBandCoeffs.b2 = 0.9967328593303515f;
         midLowCoeffs.a0 = 1.000000f;
-        midLowCoeffs.a1 = -1.986825f;
-        midLowCoeffs.a2 = 0.986996f;
+        midLowCoeffs.a1 = -1.9868252854194832f;
+        midLowCoeffs.a2 = 0.9869955161457885f;
         midLowCoeffs.b0 = 0.0f; // Unused
-        midLowCoeffs.b1 = -1.98683f;
-        midLowCoeffs.b2 = 0.986996f;
+        midLowCoeffs.b1 = -1.9868252854194832f;
+        midLowCoeffs.b2 = 0.9869955161457885f;
         midBandCoeffs.a0 = 1.000000f;
-        midBandCoeffs.a1 = -1.897381f;
-        midBandCoeffs.a2 = 0.906562f;
+        midBandCoeffs.a1 = -1.8973814990203015f;
+        midBandCoeffs.a2 = 0.9065621167287853f;
         midBandCoeffs.b0 = 0.0f; // Unused
-        midBandCoeffs.b1 = -1.897381f;
-        midBandCoeffs.b2 = 0.906562f;
-        midHighCoeffs.a0 = 0.999999f;
-        midHighCoeffs.a1 = -1.787234f;
-        midHighCoeffs.a2 = 0.822248f;
+        midBandCoeffs.b1 = -1.8973814990203015f;
+        midBandCoeffs.b2 = 0.9065621167287853f;
+        midHighCoeffs.a0 = 0.9999999999999999f;
+        midHighCoeffs.a1 = -1.7872344851894877f;
+        midHighCoeffs.a2 = 0.8222484787441973f;
         midHighCoeffs.b0 = 0.0f; // Unused
-        midHighCoeffs.b1 = -1.787234f;
-        midHighCoeffs.b2 = 0.822248f;
-        highBandCoeffs.a0 = 0.999999f;
-        highBandCoeffs.a1 = -1.216444f;
-        highBandCoeffs.a2 = 0.533295f;
+        midHighCoeffs.b1 = -1.7872344851894877f;
+        midHighCoeffs.b2 = 0.8222484787441973f;
+        highBandCoeffs.a0 = 0.9999999999999999f;
+        highBandCoeffs.a1 = -1.2164444497980702f;
+        highBandCoeffs.a2 = 0.5332946721463616f;
         highBandCoeffs.b0 = 0.0f; // Unused
-        highBandCoeffs.b1 = -1.216444f;
-        highBandCoeffs.b2 = 0.533295f;
+        highBandCoeffs.b1 = -1.2164444497980702f;
+        highBandCoeffs.b2 = 0.5332946721463616f;
+
         printf("Coefficients reset!\n");
     } else {
         printf("Invalid parameter\n");
     }
     isConfigComplete = 1;
 }
+
+// void addFsuffix(void) {
+//   lowBandCoeffs.a0 = lowBandCoeffs.a0 * 1.0f;
+//   lowBandCoeffs.a1 = lowBandCoeffs.a1 * 1.0f;
+//   lowBandCoeffs.a2 = lowBandCoeffs.a2 * 1.0f;
+//   lowBandCoeffs.b0 = lowBandCoeffs.b0 * 1.0f;
+//   lowBandCoeffs.b1 = lowBandCoeffs.b1 * 1.0f;
+//   lowBandCoeffs.b2 = lowBandCoeffs.b2 * 1.0f;
+//   midLowCoeffs.a0 = midLowCoeffs.a0 * 1.0f;
+//   midLowCoeffs.a1 = midLowCoeffs.a1 * 1.0f;
+//   midLowCoeffs.a2 = midLowCoeffs.a2 * 1.0f;
+//   midLowCoeffs.b0 = midLowCoeffs.b0 * 1.0f;
+//   midLowCoeffs.b1 = midLowCoeffs.b1 * 1.0f;
+//   midLowCoeffs.b2 = midLowCoeffs.b2 * 1.0f;
+//   midBandCoeffs.a0 = midBandCoeffs.a0 * 1.0f;
+//   midBandCoeffs.a1 = midBandCoeffs.a1 * 1.0f;
+//   midBandCoeffs.a2 = midBandCoeffs.a2 * 1.0f;
+//   midBandCoeffs.b0 = midBandCoeffs.b0 * 1.0f;
+//   midBandCoeffs.b1 = midBandCoeffs.b1 * 1.0f;
+//   midBandCoeffs.b2 = midBandCoeffs.b2 * 1.0f;
+//   midHighCoeffs.a0 = midHighCoeffs.a0 * 1.0f;
+//   midHighCoeffs.a1 = midHighCoeffs.a1 * 1.0f;
+//   midHighCoeffs.a2 = midHighCoeffs.a2 * 1.0f;
+//   midHighCoeffs.b0 = midHighCoeffs.b0 * 1.0f;
+//   midHighCoeffs.b1 = midHighCoeffs.b1 * 1.0f;
+//   midHighCoeffs.b2 = midHighCoeffs.b2 * 1.0f;
+//   highBandCoeffs.a0 = highBandCoeffs.a0 * 1.0f;
+//   highBandCoeffs.a1 = highBandCoeffs.a1 * 1.0f;
+//   highBandCoeffs.a2 = highBandCoeffs.a2 * 1.0f;
+//   highBandCoeffs.b0 = highBandCoeffs.b0 * 1.0f;
+//   highBandCoeffs.b1 = highBandCoeffs.b1 * 1.0f;
+//   highBandCoeffs.b2 = highBandCoeffs.b2 * 1.0f;
+// }
 
 int CalPeakingLow(int inSample) {
   float inSampleF = (float)inSample;
