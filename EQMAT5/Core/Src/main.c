@@ -421,11 +421,11 @@ int Calc_IIR (int inSample) {
 int CalPeakingLow(int inSample) {
   float inSampleF = (float)inSample;
   float outSampleF =
-      lowBandCoeffs.a0 * inSampleF
+      (lowBandCoeffs.a0 * inSampleF
       + lowBandCoeffs.a1 * in_z1
       + lowBandCoeffs.a2 * in_z2
       - lowBandCoeffs.b1 * out_z1
-      - lowBandCoeffs.b2 * out_z2;
+      - lowBandCoeffs.b2 * out_z2) / lowBandCoeffs.b0; // Phil lab = *, EasyEQ = /
   in_z2 = in_z1;
   in_z1 = inSampleF;
   out_z2 = out_z1;
@@ -433,7 +433,6 @@ int CalPeakingLow(int inSample) {
   
   return (int) outSampleF;
 }
-
 
 void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
   //restore signed 24 bit sample from 16-bit buffers
