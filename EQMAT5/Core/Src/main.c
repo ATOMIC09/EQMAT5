@@ -60,12 +60,13 @@ static void MX_I2S2_Init(void);
 static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
+#define AUDIO_BUFFER_SIZE 8
 uint8_t tx_buffer[17] = "Serial Ready!\n\r";
 uint8_t rx_buffer[75];
 float a0, a1, a2, b1, b2, in_z1, in_z2, out_z1, out_z2;
 
-uint16_t rxBuf[8];
-uint16_t txBuf[8];
+uint16_t rxBuf[AUDIO_BUFFER_SIZE];
+uint16_t txBuf[AUDIO_BUFFER_SIZE];
 
 int isConfigComplete = 1;
 
@@ -79,11 +80,12 @@ typedef struct {
 } FilterCoeffs;
 
 FilterCoeffs lowBandCoeffs;
+FilterCoeffs midLowCoeffs;
 FilterCoeffs midBandCoeffs;
+FilterCoeffs midHighCoeffs;
 FilterCoeffs highBandCoeffs;
 
 void parseAndStoreCoeffs(char *rx_buffer);
-int Calc_IIR (int inSample);
 int CalPeakingLow(int inSample);
 
 /* USER CODE END PFP */
@@ -134,15 +136,7 @@ int main(void)
   // Set default filter coefficients
   parseAndStoreCoeffs("Reset");
 
-  HAL_I2SEx_TransmitReceive_DMA (&hi2s2, txBuf, rxBuf, 4);
-
-
-  //left-channel, High-Pass, 1kHz, fs=96kHz, q=0.7
-  a0 = 1.3302048310381533f;
-  a1 = -1.9741980580247258f;
-  a2 = 0.6482292061275035f;
-  b1 = -1.9741980580247258f;
-  b2 = 0.978434037165657f;
+  HAL_I2SEx_TransmitReceive_DMA (&hi2s2, txBuf, rxBuf, AUDIO_BUFFER_SIZE/2);
 
   /* USER CODE END 2 */
 
@@ -362,6 +356,13 @@ void parseAndStoreCoeffs(char *rx_buffer) {
         printf("Parsed Low: %f %f %f %f %f %f\n", 
                lowBandCoeffs.a0, lowBandCoeffs.a1, lowBandCoeffs.a2, 
                lowBandCoeffs.b0, lowBandCoeffs.b1, lowBandCoeffs.b2);
+    } else if (strncmp(rx_buffer, "MidLow", 6) == 0) {
+        sscanf(rx_buffer, "MidLow %f %f %f %f %f %f", 
+               &midLowCoeffs.a0, &midLowCoeffs.a1, &midLowCoeffs.a2, 
+               &midLowCoeffs.b0, &midLowCoeffs.b1, &midLowCoeffs.b2);
+        printf("Parsed MidLow: %f %f %f %f %f %f\n",
+                midLowCoeffs.a0, midLowCoeffs.a1, midLowCoeffs.a2, 
+                midLowCoeffs.b0, midLowCoeffs.b1, midLowCoeffs.b2);
     } else if (strncmp(rx_buffer, "Mid", 3) == 0) {
         sscanf(rx_buffer, "Mid %f %f %f %f %f %f", 
                &midBandCoeffs.a0, &midBandCoeffs.a1, &midBandCoeffs.a2, 
@@ -369,6 +370,13 @@ void parseAndStoreCoeffs(char *rx_buffer) {
         printf("Parsed Mid: %f %f %f %f %f %f\n",
                 midBandCoeffs.a0, midBandCoeffs.a1, midBandCoeffs.a2, 
                 midBandCoeffs.b0, midBandCoeffs.b1, midBandCoeffs.b2);
+    } else if (strncmp(rx_buffer, "MidHigh", 7) == 0) {
+        sscanf(rx_buffer, "MidHigh %f %f %f %f %f %f", 
+               &midHighCoeffs.a0, &midHighCoeffs.a1, &midHighCoeffs.a2, 
+               &midHighCoeffs.b0, &midHighCoeffs.b1, &midHighCoeffs.b2);
+        printf("Parsed MidHigh: %f %f %f %f %f %f\n",
+                midHighCoeffs.a0, midHighCoeffs.a1, midHighCoeffs.a2, 
+                midHighCoeffs.b0, midHighCoeffs.b1, midHighCoeffs.b2);
     } else if (strncmp(rx_buffer, "High", 4) == 0) {
         sscanf(rx_buffer, "High %f %f %f %f %f %f", 
                &highBandCoeffs.a0, &highBandCoeffs.a1, &highBandCoeffs.a2, 
@@ -378,44 +386,40 @@ void parseAndStoreCoeffs(char *rx_buffer) {
                 highBandCoeffs.b0, highBandCoeffs.b1, highBandCoeffs.b2);
     } else if (strncmp(rx_buffer, "Reset", 5) == 0) {
         lowBandCoeffs.a0 = 1.000000f;
-        lowBandCoeffs.a1 = -1.967791f;
-        lowBandCoeffs.a2 = 0.967802f;
-        lowBandCoeffs.b0 = 1.016362f;
-        lowBandCoeffs.b1 = -1.967791f;
-        lowBandCoeffs.b2 = 0.967802f;
-        midBandCoeffs.a0 = 1.049009f;
-        midBandCoeffs.a1 = -1.990369f;
-        midBandCoeffs.a2 = 0.950991f;
-        midBandCoeffs.b0 = 1.049009f;
-        midBandCoeffs.b1 = -1.990369f;
-        midBandCoeffs.b2 = 0.950991f;
-        highBandCoeffs.a0 = 1.304381f;
-        highBandCoeffs.a1 = -1.586707f;
-        highBandCoeffs.a2 = 0.695619f;
-        highBandCoeffs.b0 = 1.304381f;
-        highBandCoeffs.b1 = -1.586707f;
-        highBandCoeffs.b2 = 0.695619f;
+        lowBandCoeffs.a1 = -1.996722f;
+        lowBandCoeffs.a2 = 0.996733f;
+        lowBandCoeffs.b0 = 0.0f; // Unused
+        lowBandCoeffs.b1 = -1.996722f;
+        lowBandCoeffs.b2 = 0.996733f;
+        midLowCoeffs.a0 = 1.000000f;
+        midLowCoeffs.a1 = -1.986825f;
+        midLowCoeffs.a2 = 0.986996f;
+        midLowCoeffs.b0 = 0.0f; // Unused
+        midLowCoeffs.b1 = -1.98683f;
+        midLowCoeffs.b2 = 0.986996f;
+        midBandCoeffs.a0 = 1.000000f;
+        midBandCoeffs.a1 = -1.897381f;
+        midBandCoeffs.a2 = 0.906562f;
+        midBandCoeffs.b0 = 0.0f; // Unused
+        midBandCoeffs.b1 = -1.897381f;
+        midBandCoeffs.b2 = 0.906562f;
+        midHighCoeffs.a0 = 0.999999f;
+        midHighCoeffs.a1 = -1.787234f;
+        midHighCoeffs.a2 = 0.822248f;
+        midHighCoeffs.b0 = 0.0f; // Unused
+        midHighCoeffs.b1 = -1.787234f;
+        midHighCoeffs.b2 = 0.822248f;
+        highBandCoeffs.a0 = 0.999999f;
+        highBandCoeffs.a1 = -1.216444f;
+        highBandCoeffs.a2 = 0.533295f;
+        highBandCoeffs.b0 = 0.0f; // Unused
+        highBandCoeffs.b1 = -1.216444f;
+        highBandCoeffs.b2 = 0.533295f;
         printf("Coefficients reset!\n");
     } else {
         printf("Invalid parameter\n");
     }
     isConfigComplete = 1;
-}
-
-int Calc_IIR (int inSample) {
-	float inSampleF = (float)inSample;
-	float outSampleF =
-			a0 * inSampleF
-			+ a1 * in_z1
-			+ a2 * in_z2
-			- b1 * out_z1
-			- b2 * out_z2;
-	in_z2 = in_z1;
-	in_z1 = inSampleF;
-	out_z2 = out_z1;
-	out_z1 = outSampleF;
-
-	return (int) outSampleF;
 }
 
 int CalPeakingLow(int inSample) {
@@ -425,7 +429,7 @@ int CalPeakingLow(int inSample) {
       + lowBandCoeffs.a1 * in_z1
       + lowBandCoeffs.a2 * in_z2
       - lowBandCoeffs.b1 * out_z1
-      - lowBandCoeffs.b2 * out_z2) / lowBandCoeffs.b0; // Phil lab = *, EasyEQ = /
+      - lowBandCoeffs.b2 * out_z2);// / lowBandCoeffs.b0; // Phil lab = *, EasyEQ = /
   in_z2 = in_z1;
   in_z1 = inSampleF;
   out_z2 = out_z1;
@@ -435,7 +439,7 @@ int CalPeakingLow(int inSample) {
 }
 
 void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
-  //restore signed 24 bit sample from 16-bit buffers
+  //restore signed 24 bit sample from 16-bit buffers to 32-bit 
 	int lSample = (int) (rxBuf[0]<<16)|rxBuf[1];
 	int rSample = (int) (rxBuf[2]<<16)|rxBuf[3];
 
