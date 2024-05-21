@@ -7,8 +7,12 @@
 ../Core/Src/main.c:294:13:MX_GPIO_Init	1
 ../Core/Src/main.c:322:5:_write	2
 ../Core/Src/main.c:334:6:HAL_UART_RxCpltCallback	1
-../Core/Src/main.c:353:6:parseAndStoreCoeffs	7
-../Core/Src/main.c:461:5:CalPeakingLow	2
-../Core/Src/main.c:481:6:HAL_I2SEx_TxRxHalfCpltCallback	2
-../Core/Src/main.c:505:6:HAL_I2SEx_TxRxCpltCallback	2
-../Core/Src/main.c:533:6:Error_Handler	1
+../Core/Src/main.c:351:6:parseAndStoreCoeffs	7
+../Core/Src/main.c:459:5:CalPeakingLow	2
+../Core/Src/main.c:479:5:CalPeakingLowMid	2
+../Core/Src/main.c:499:5:CalPeakingMid	2
+../Core/Src/main.c:519:5:CalPeakingHighMid	2
+../Core/Src/main.c:539:5:CalPeakingHigh	2
+../Core/Src/main.c:559:6:HAL_I2SEx_TxRxHalfCpltCallback	2
+../Core/Src/main.c:583:6:HAL_I2SEx_TxRxCpltCallback	2
+../Core/Src/main.c:611:6:Error_Handler	1

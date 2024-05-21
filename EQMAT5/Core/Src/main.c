@@ -389,31 +389,31 @@ void parseAndStoreCoeffs(char *rx_buffer) {
         lowBandCoeffs.a0 = 1.000000f;
         lowBandCoeffs.a1 = -1.9967221676279703f;
         lowBandCoeffs.a2 = 0.9967328593303515f;
-        lowBandCoeffs.b0 = 0.0f; // Unused
+        lowBandCoeffs.b0 = 1.0f;
         lowBandCoeffs.b1 = -1.9967221676279703f;
         lowBandCoeffs.b2 = 0.9967328593303515f;
         midLowCoeffs.a0 = 1.000000f;
         midLowCoeffs.a1 = -1.9868252854194832f;
         midLowCoeffs.a2 = 0.9869955161457885f;
-        midLowCoeffs.b0 = 0.0f; // Unused
+        midLowCoeffs.b0 = 1.0f;
         midLowCoeffs.b1 = -1.9868252854194832f;
         midLowCoeffs.b2 = 0.9869955161457885f;
         midBandCoeffs.a0 = 1.000000f;
         midBandCoeffs.a1 = -1.8973814990203015f;
         midBandCoeffs.a2 = 0.9065621167287853f;
-        midBandCoeffs.b0 = 0.0f; // Unused
+        midBandCoeffs.b0 = 1.0f;
         midBandCoeffs.b1 = -1.8973814990203015f;
         midBandCoeffs.b2 = 0.9065621167287853f;
         midHighCoeffs.a0 = 0.9999999999999999f;
         midHighCoeffs.a1 = -1.7872344851894877f;
         midHighCoeffs.a2 = 0.8222484787441973f;
-        midHighCoeffs.b0 = 0.0f; // Unused
+        midHighCoeffs.b0 = 1.0f;
         midHighCoeffs.b1 = -1.7872344851894877f;
         midHighCoeffs.b2 = 0.8222484787441973f;
         highBandCoeffs.a0 = 0.9999999999999999f;
         highBandCoeffs.a1 = -1.2164444497980702f;
         highBandCoeffs.a2 = 0.5332946721463616f;
-        highBandCoeffs.b0 = 0.0f; // Unused
+        highBandCoeffs.b0 = 1.0f;
         highBandCoeffs.b1 = -1.2164444497980702f;
         highBandCoeffs.b2 = 0.5332946721463616f;
 
@@ -476,6 +476,86 @@ int CalPeakingLow(int inSample) {
   return (int) outSampleF;
 }
 
+int CalPeakingLowMid(int inSample) {
+  if (isConfigComplete == 0) {
+    return inSample;
+  }
+  
+  float inSampleF = (float)inSample;
+  float outSampleF =
+      (midLowCoeffs.a0 * inSampleF
+      + midLowCoeffs.a1 * in_z1
+      + midLowCoeffs.a2 * in_z2
+      - midLowCoeffs.b1 * out_z1
+      - midLowCoeffs.b2 * out_z2);// / midLowCoeffs.b0; // Phil lab = *, EasyEQ = /
+  in_z2 = in_z1;
+  in_z1 = inSampleF;
+  out_z2 = out_z1;
+  out_z1 = outSampleF;
+
+  return (int) outSampleF;
+}
+
+int CalPeakingMid(int inSample) {
+  if (isConfigComplete == 0) {
+    return inSample;
+  }
+  
+  float inSampleF = (float)inSample;
+  float outSampleF =
+      (midBandCoeffs.a0 * inSampleF
+      + midBandCoeffs.a1 * in_z1
+      + midBandCoeffs.a2 * in_z2
+      - midBandCoeffs.b1 * out_z1
+      - midBandCoeffs.b2 * out_z2);// / midBandCoeffs.b0; // Phil lab = *, EasyEQ = /
+  in_z2 = in_z1;
+  in_z1 = inSampleF;
+  out_z2 = out_z1;
+  out_z1 = outSampleF;
+  
+  return (int) outSampleF;
+}
+
+int CalPeakingHighMid(int inSample) {
+  if (isConfigComplete == 0) {
+    return inSample;
+  }
+  
+  float inSampleF = (float)inSample;
+  float outSampleF =
+      (midHighCoeffs.a0 * inSampleF
+      + midHighCoeffs.a1 * in_z1
+      + midHighCoeffs.a2 * in_z2
+      - midHighCoeffs.b1 * out_z1
+      - midHighCoeffs.b2 * out_z2);// / midHighCoeffs.b0; // Phil lab = *, EasyEQ = /
+  in_z2 = in_z1;
+  in_z1 = inSampleF;
+  out_z2 = out_z1;
+  out_z1 = outSampleF;
+  
+  return (int) outSampleF;
+}
+
+int CalPeakingHigh(int inSample) {
+  if (isConfigComplete == 0) {
+    return inSample;
+  }
+  
+  float inSampleF = (float)inSample;
+  float outSampleF =
+      (highBandCoeffs.a0 * inSampleF
+      + highBandCoeffs.a1 * in_z1
+      + highBandCoeffs.a2 * in_z2
+      - highBandCoeffs.b1 * out_z1
+      - highBandCoeffs.b2 * out_z2);// / highBandCoeffs.b0; // Phil lab = *, EasyEQ = /
+  in_z2 = in_z1;
+  in_z1 = inSampleF;
+  out_z2 = out_z1;
+  out_z1 = outSampleF;
+  
+  return (int) outSampleF;
+}
+
 void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
   if (isConfigComplete == 1) {
     //restore signed 24 bit sample from 16-bit buffers to 32-bit 
@@ -487,7 +567,10 @@ void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
     // rSample = Calc_IIR(rSample);
 
     rSample = CalPeakingLow(rSample);
+    rSample = CalPeakingLowMid(rSample);
     lSample = CalPeakingLow(lSample);
+    lSample = CalPeakingLowMid(lSample);
+
 
     //restore to buffer
     txBuf[0] = (lSample>>16)&0xFFFF;
@@ -507,7 +590,9 @@ void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s){
     // lSample = Calc_IIR(lSample);
     // rSample = Calc_IIR(rSample);
     rSample = CalPeakingLow(rSample);
+    rSample = CalPeakingLowMid(rSample);
     lSample = CalPeakingLow(lSample);
+    lSample = CalPeakingLowMid(lSample);
 
     //restore to buffer
     txBuf[4] = (lSample>>16)&0xFFFF;
