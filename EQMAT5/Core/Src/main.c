@@ -558,7 +558,28 @@ int CalPeakingHigh(int inSample) {
 
 void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
   if (isConfigComplete == 1) {
-    //restore signed 24 bit sample from 16-bit buffers to 32-bit 
+    // for (int i = 0; i < AUDIO_BUFFER_SIZE/2; i+=4) {
+    //   printf("Half i = %d\n", i);
+    //   //restore signed 24 bit sample from 16-bit buffers to 32-bit 
+    //   int lSample = (int) (rxBuf[i]<<16)|rxBuf[i+1];
+    //   int rSample = (int) (rxBuf[i+2]<<16)|rxBuf[i+3];
+
+    //   //run HP on left channel and LP on right channel
+    //   // lSample = Calc_IIR(lSample);
+    //   // rSample = Calc_IIR(rSample);
+
+    //   rSample = CalPeakingLow(rSample);
+    //   rSample = CalPeakingLowMid(rSample);
+    //   lSample = CalPeakingLow(lSample);
+    //   lSample = CalPeakingLowMid(lSample);
+
+    //   //restore to buffer
+    //   txBuf[i] = (lSample>>16)&0xFFFF;
+    //   txBuf[i+1] = lSample&0xFFFF;
+    //   txBuf[i+2] = (rSample>>16)&0xFFFF;
+    //   txBuf[i+3] = rSample&0xFFFF;
+    // }
+    // fix the buffer
     int lSample = (int) (rxBuf[0]<<16)|rxBuf[1];
     int rSample = (int) (rxBuf[2]<<16)|rxBuf[3];
 
@@ -571,7 +592,6 @@ void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
     lSample = CalPeakingLow(lSample);
     lSample = CalPeakingLowMid(lSample);
 
-
     //restore to buffer
     txBuf[0] = (lSample>>16)&0xFFFF;
     txBuf[1] = lSample&0xFFFF;
@@ -583,6 +603,27 @@ void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
 void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s){
 	//restore signed 24 bit sample from 16-bit buffers
   if (isConfigComplete == 1) {
+    // for (int i = AUDIO_BUFFER_SIZE/2; i < AUDIO_BUFFER_SIZE; i+=4) {
+    //   printf("Full i = %d\n", i);
+    //   //restore signed 24 bit sample from 16-bit buffers to 32-bit 
+    //   int lSample = (int) (rxBuf[i]<<16)|rxBuf[i+1];
+    //   int rSample = (int) (rxBuf[i+2]<<16)|rxBuf[i+3];
+
+    //   //run HP on left channel and LP on right channel
+    //   // lSample = Calc_IIR(lSample);
+    //   // rSample = Calc_IIR(rSample);
+    //   rSample = CalPeakingLow(rSample);
+    //   rSample = CalPeakingLowMid(rSample);
+    //   lSample = CalPeakingLow(lSample);
+    //   lSample = CalPeakingLowMid(lSample);
+
+    //   //restore to buffer
+    //   txBuf[i] = (lSample>>16)&0xFFFF;
+    //   txBuf[i+1] = lSample&0xFFFF;
+    //   txBuf[i+2] = (rSample>>16)&0xFFFF;
+    //   txBuf[i+3] = rSample&0xFFFF;
+    // }
+    // fix the buffer
     int lSample = (int) (rxBuf[4]<<16)|rxBuf[5];
     int rSample = (int) (rxBuf[6]<<16)|rxBuf[7];
 
