@@ -20,6 +20,7 @@
 #include "main.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -65,10 +66,13 @@ uint8_t tx_buffer[17] = "Serial Ready!\n\r";
 uint8_t rx_buffer[75];
 float a0, a1, a2, b1, b2, in_z1, in_z2, out_z1, out_z2;
 
-uint16_t rxBuf[AUDIO_BUFFER_SIZE];
-uint16_t txBuf[AUDIO_BUFFER_SIZE];
+int16_t rxBuf[AUDIO_BUFFER_SIZE];
+int16_t txBuf[AUDIO_BUFFER_SIZE];
+static volatile int16_t *inBufPtr;
+static volatile int16_t *outBufPtr = &txBuf[0];
 
-int isConfigComplete = 1;
+uint8_t dataReadyFlag = false;
+uint8_t isConfigComplete = true;
 
 typedef struct {
   float a0;
@@ -87,6 +91,12 @@ FilterCoeffs highBandCoeffs;
 
 void parseAndStoreCoeffs(char *rx_buffer);
 int CalPeakingLow(int inSample);
+int CalPeakingLowMid(int inSample);
+int CalPeakingMid(int inSample);
+int CalPeakingHighMid(int inSample);
+int CalPeakingHigh(int inSample);
+void processData(void);
+
 // void addFsuffix(void);
 
 /* USER CODE END PFP */
@@ -137,7 +147,7 @@ int main(void)
   // Set default filter coefficients
   parseAndStoreCoeffs("Reset");
 
-  HAL_I2SEx_TransmitReceive_DMA (&hi2s2, txBuf, rxBuf, AUDIO_BUFFER_SIZE/2);
+  HAL_I2SEx_TransmitReceive_DMA (&hi2s2, (uint16_t *) txBuf, (uint16_t *) rxBuf, AUDIO_BUFFER_SIZE/2);
 
   /* USER CODE END 2 */
 
@@ -148,9 +158,13 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    if (dataReadyFlag) {
+      processData();
+      dataReadyFlag = 0;
+    }
     // Blink the LED while working
-    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2);
-    HAL_Delay(1000);
+    // HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2);
+    // HAL_Delay(1000);
   }
   /* USER CODE END 3 */
 }
@@ -341,9 +355,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   // HAL_UART_Transmit(&huart1, rx_buffer, sizeof(rx_buffer), 10); // Echo the received data
   printf("Received UART: %s\n", rx_buffer); // Print the received data to serial
 
-  isConfigComplete = 0;
+  isConfigComplete = false;
   parseAndStoreCoeffs((char *)rx_buffer); // Parse the received data
-  isConfigComplete = 1;
+  isConfigComplete = true;
   memset(rx_buffer, 0, sizeof(rx_buffer)); // Clear the buffer
   HAL_UART_Receive_IT(&huart1, rx_buffer, sizeof(rx_buffer)); // Start the next receive
 }
@@ -579,24 +593,30 @@ void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
     //   txBuf[i+2] = (rSample>>16)&0xFFFF;
     //   txBuf[i+3] = rSample&0xFFFF;
     // }
-    // fix the buffer
-    int lSample = (int) (rxBuf[0]<<16)|rxBuf[1];
-    int rSample = (int) (rxBuf[2]<<16)|rxBuf[3];
 
-    //run HP on left channel and LP on right channel
-    // lSample = Calc_IIR(lSample);
-    // rSample = Calc_IIR(rSample);
+    // // fixed the buffer
+    // int lSample = (int) (rxBuf[0]<<16)|rxBuf[1];
+    // int rSample = (int) (rxBuf[2]<<16)|rxBuf[3];
 
-    rSample = CalPeakingLow(rSample);
-    rSample = CalPeakingLowMid(rSample);
-    lSample = CalPeakingLow(lSample);
-    lSample = CalPeakingLowMid(lSample);
+    // //run HP on left channel and LP on right channel
+    // // lSample = Calc_IIR(lSample);
+    // // rSample = Calc_IIR(rSample);
 
-    //restore to buffer
-    txBuf[0] = (lSample>>16)&0xFFFF;
-    txBuf[1] = lSample&0xFFFF;
-    txBuf[2] = (rSample>>16)&0xFFFF;
-    txBuf[3] = rSample&0xFFFF;
+    // rSample = CalPeakingLow(rSample);
+    // rSample = CalPeakingLowMid(rSample);
+    // lSample = CalPeakingLow(lSample);
+    // lSample = CalPeakingLowMid(lSample);
+
+    // //restore to buffer
+    // txBuf[0] = (lSample>>16)&0xFFFF;
+    // txBuf[1] = lSample&0xFFFF;
+    // txBuf[2] = (rSample>>16)&0xFFFF;
+    // txBuf[3] = rSample&0xFFFF;
+
+    // Double buffer method
+    inBufPtr = &rxBuf[0];
+    outBufPtr = &txBuf[0];
+    dataReadyFlag = true;
   }
 }
 
@@ -623,26 +643,63 @@ void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s){
     //   txBuf[i+2] = (rSample>>16)&0xFFFF;
     //   txBuf[i+3] = rSample&0xFFFF;
     // }
-    // fix the buffer
-    int lSample = (int) (rxBuf[4]<<16)|rxBuf[5];
-    int rSample = (int) (rxBuf[6]<<16)|rxBuf[7];
+    
+    // // fixed the buffer
+    // int lSample = (int) (rxBuf[4]<<16)|rxBuf[5];
+    // int rSample = (int) (rxBuf[6]<<16)|rxBuf[7];
 
-    //run HP on left channel and LP on right channel
-    // lSample = Calc_IIR(lSample);
-    // rSample = Calc_IIR(rSample);
-    rSample = CalPeakingLow(rSample);
-    rSample = CalPeakingLowMid(rSample);
-    lSample = CalPeakingLow(lSample);
-    lSample = CalPeakingLowMid(lSample);
+    // //run HP on left channel and LP on right channel
+    // // lSample = Calc_IIR(lSample);
+    // // rSample = Calc_IIR(rSample);
+    // rSample = CalPeakingLow(rSample);
+    // rSample = CalPeakingLowMid(rSample);
+    // lSample = CalPeakingLow(lSample);
+    // lSample = CalPeakingLowMid(lSample);
 
-    //restore to buffer
-    txBuf[4] = (lSample>>16)&0xFFFF;
-    txBuf[5] = lSample&0xFFFF;
-    txBuf[6] = (rSample>>16)&0xFFFF;
-    txBuf[7] = rSample&0xFFFF;
+    // //restore to buffer
+    // txBuf[4] = (lSample>>16)&0xFFFF;
+    // txBuf[5] = lSample&0xFFFF;
+    // txBuf[6] = (rSample>>16)&0xFFFF;
+    // txBuf[7] = rSample&0xFFFF;
+
+    // Double buffer method
+    inBufPtr = &rxBuf[AUDIO_BUFFER_SIZE/2];
+    outBufPtr = &txBuf[AUDIO_BUFFER_SIZE/2];
+    dataReadyFlag = true;
   }
 }
 
+void processData() {
+  static int leftIn, leftOut, rightIn, rightOut;
+
+  for (uint8_t n = 0; n < AUDIO_BUFFER_SIZE - 1; n += 2) {
+
+    // Restore signed 24 bit sample from 16-bit buffers to 32-bit
+    leftIn = (float) ((inBufPtr[n] << 16) | inBufPtr[n + 1]);
+    rightIn = (float) ((inBufPtr[n + 2] << 16) | inBufPtr[n + 3]);
+
+    // Run HP on left channel and LP on right channel
+    leftOut = CalPeakingLow(leftIn);
+    // leftOut = CalPeakingLowMid(leftOut);
+    // leftOut = CalPeakingMid(leftOut);
+    // leftOut = CalPeakingHighMid(leftOut);
+    // leftOut = CalPeakingHigh(leftOut);
+
+    // rightOut = CalPeakingLow(rightIn);
+    // rightOut = CalPeakingLowMid(rightOut);
+    // rightOut = CalPeakingMid(rightOut);
+    // rightOut = CalPeakingHighMid(rightOut);
+    // rightOut = CalPeakingHigh(rightOut);
+
+    leftOut = leftIn;
+    rightOut = rightIn;
+    // Restore to buffer
+    outBufPtr[n] = (int16_t) ((leftOut >> 16) & 0xFFFF);
+    outBufPtr[n + 1] = (int16_t) (leftOut & 0xFFFF);
+    outBufPtr[n + 2] = (int16_t) ((rightOut >> 16) & 0xFFFF);
+    outBufPtr[n + 3] = (int16_t) (rightOut & 0xFFFF);
+  }
+}
 /* USER CODE END 4 */
 
 /**
