@@ -61,7 +61,7 @@ static void MX_I2S2_Init(void);
 static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
-#define AUDIO_BUFFER_SIZE 8
+#define AUDIO_BUFFER_SIZE 256
 uint8_t tx_buffer[17] = "Serial Ready!\n\r";
 uint8_t rx_buffer[75];
 float a0, a1, a2, b1, b2, in_z1, in_z2, out_z1, out_z2;
@@ -147,7 +147,7 @@ int main(void)
   // Set default filter coefficients
   parseAndStoreCoeffs("Reset");
 
-  HAL_I2SEx_TransmitReceive_DMA (&hi2s2, (uint16_t *) txBuf, (uint16_t *) rxBuf, AUDIO_BUFFER_SIZE/2);
+  HAL_I2SEx_TransmitReceive_DMA (&hi2s2, (uint16_t *) txBuf, (uint16_t *) rxBuf, AUDIO_BUFFER_SIZE);
 
   /* USER CODE END 2 */
 
@@ -679,7 +679,7 @@ void processData() {
     rightIn = (float) ((inBufPtr[n + 2] << 16) | inBufPtr[n + 3]);
 
     // Run HP on left channel and LP on right channel
-    leftOut = CalPeakingLow(leftIn);
+    // leftOut = CalPeakingLow(leftIn);
     // leftOut = CalPeakingLowMid(leftOut);
     // leftOut = CalPeakingMid(leftOut);
     // leftOut = CalPeakingHighMid(leftOut);
