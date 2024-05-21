@@ -343,7 +343,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
   isConfigComplete = 0;
   parseAndStoreCoeffs((char *)rx_buffer); // Parse the received data
-  
+  isConfigComplete = 1;
   memset(rx_buffer, 0, sizeof(rx_buffer)); // Clear the buffer
   HAL_UART_Receive_IT(&huart1, rx_buffer, sizeof(rx_buffer)); // Start the next receive
 }
@@ -421,7 +421,6 @@ void parseAndStoreCoeffs(char *rx_buffer) {
     } else {
         printf("Invalid parameter\n");
     }
-    isConfigComplete = 1;
 }
 
 // void addFsuffix(void) {
@@ -458,6 +457,10 @@ void parseAndStoreCoeffs(char *rx_buffer) {
 // }
 
 int CalPeakingLow(int inSample) {
+  if (isConfigComplete == 0) {
+    return inSample;
+  }
+  
   float inSampleF = (float)inSample;
   float outSampleF =
       (lowBandCoeffs.a0 * inSampleF
@@ -474,44 +477,44 @@ int CalPeakingLow(int inSample) {
 }
 
 void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
-  //restore signed 24 bit sample from 16-bit buffers to 32-bit 
-	int lSample = (int) (rxBuf[0]<<16)|rxBuf[1];
-	int rSample = (int) (rxBuf[2]<<16)|rxBuf[3];
-
-	//run HP on left channel and LP on right channel
-	// lSample = Calc_IIR(lSample);
-	// rSample = Calc_IIR(rSample);
   if (isConfigComplete == 1) {
-    lSample = CalPeakingLow(lSample);
+    //restore signed 24 bit sample from 16-bit buffers to 32-bit 
+    int lSample = (int) (rxBuf[0]<<16)|rxBuf[1];
+    int rSample = (int) (rxBuf[2]<<16)|rxBuf[3];
+
+    //run HP on left channel and LP on right channel
+    // lSample = Calc_IIR(lSample);
+    // rSample = Calc_IIR(rSample);
+
     rSample = CalPeakingLow(rSample);
+    lSample = CalPeakingLow(lSample);
+
+    //restore to buffer
+    txBuf[0] = (lSample>>16)&0xFFFF;
+    txBuf[1] = lSample&0xFFFF;
+    txBuf[2] = (rSample>>16)&0xFFFF;
+    txBuf[3] = rSample&0xFFFF;
   }
-
-
-	//restore to buffer
-	txBuf[0] = (lSample>>16)&0xFFFF;
-	txBuf[1] = lSample&0xFFFF;
-	txBuf[2] = (rSample>>16)&0xFFFF;
-	txBuf[3] = rSample&0xFFFF;
 }
 
 void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s){
 	//restore signed 24 bit sample from 16-bit buffers
-	int lSample = (int) (rxBuf[4]<<16)|rxBuf[5];
-	int rSample = (int) (rxBuf[6]<<16)|rxBuf[7];
-
-	//run HP on left channel and LP on right channel
-	// lSample = Calc_IIR(lSample);
-	// rSample = Calc_IIR(rSample);
   if (isConfigComplete == 1) {
-    lSample = CalPeakingLow(lSample);
-    rSample = CalPeakingLow(rSample);
-  }
+    int lSample = (int) (rxBuf[4]<<16)|rxBuf[5];
+    int rSample = (int) (rxBuf[6]<<16)|rxBuf[7];
 
-	//restore to buffer
-	txBuf[4] = (lSample>>16)&0xFFFF;
-	txBuf[5] = lSample&0xFFFF;
-	txBuf[6] = (rSample>>16)&0xFFFF;
-	txBuf[7] = rSample&0xFFFF;
+    //run HP on left channel and LP on right channel
+    // lSample = Calc_IIR(lSample);
+    // rSample = Calc_IIR(rSample);
+    rSample = CalPeakingLow(rSample);
+    lSample = CalPeakingLow(lSample);
+
+    //restore to buffer
+    txBuf[4] = (lSample>>16)&0xFFFF;
+    txBuf[5] = lSample&0xFFFF;
+    txBuf[6] = (rSample>>16)&0xFFFF;
+    txBuf[7] = rSample&0xFFFF;
+  }
 }
 
 /* USER CODE END 4 */
