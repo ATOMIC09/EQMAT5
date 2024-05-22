@@ -1,1 +1,9 @@
 # แค่พื้นที่ทดสอบโค้ด (〜￣▽￣)〜
+
+## Development Timeline
+- `test/stm32f4eq` -> เริ่มลองใช้ STM32 กับ Arduino
+- `test/stm32f4eq_test` -> เริ่มลองใช้ STM32CubeIDE
+- `test/STM32F405_EQ_Test` -> เริ่มมีเสียงออกแล้ว
+- `test/MATLABGUI` -> GUI ของ MATLAB
+- `test/STM32_EQ` -> เกิดอะไรขึ้นไม่รู้ เสียงมีปัญหาแบบเสียงหายไปเลย แต่สร้างใหม่แล้วหาย
+- `test/EQMAT5` -> เกิดอะไรขึ้นไม่รู้ แต่สร้างใหม่แล้วหาย 2
