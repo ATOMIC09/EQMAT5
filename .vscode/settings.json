@@ -8,6 +8,7 @@
         "concepts": "c",
         "type_traits": "c",
         "limits": "c",
-        "*.tcc": "c"
+        "*.tcc": "c",
+        "arm_math.h": "c"
     }
 }

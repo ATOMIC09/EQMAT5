@@ -18,12 +18,14 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include <stdio.h>
-#include <string.h>
-#include <stdbool.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+
+#include <stdio.h>
+#include <string.h>
+#include <stdbool.h>
+#include "arm_math.h"
 
 /* USER CODE END Includes */
 
@@ -34,6 +36,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+#define BLOCK_SIZE_FLOAT 512
+#define BLOCK_SIZE_U16 2048
 
 /* USER CODE END PD */
 
@@ -51,6 +56,8 @@ UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 
+arm_biquad_casd_df1_inst_f32 iirsettings_l, iirsettings_r;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -61,18 +68,32 @@ static void MX_I2S2_Init(void);
 static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
-#define AUDIO_BUFFER_SIZE 256
 uint8_t tx_buffer[17] = "Serial Ready!\n\r";
 uint8_t rx_buffer[75];
 float a0, a1, a2, b1, b2, in_z1, in_z2, out_z1, out_z2;
-
-int16_t rxBuf[AUDIO_BUFFER_SIZE];
-int16_t txBuf[AUDIO_BUFFER_SIZE];
-static volatile int16_t *inBufPtr;
-static volatile int16_t *outBufPtr = &txBuf[0];
-
-uint8_t dataReadyFlag = false;
 uint8_t isConfigComplete = true;
+
+//4 delayed samples per biquad
+float iir_l_state [4];
+float iir_r_state [4];
+
+//IIR low-pass, fs=48kHz, f_cut=1kHz, q=0.707
+float iir_coeffs [5] = {
+				0.997840f,
+				-1.994824f,
+				0.996994f,
+				1.994824f,
+				-0.994834
+};
+
+uint16_t rxBuf[BLOCK_SIZE_U16*2];
+uint16_t txBuf[BLOCK_SIZE_U16*2];
+float l_buf_in [BLOCK_SIZE_FLOAT*2];
+float r_buf_in [BLOCK_SIZE_FLOAT*2];
+float l_buf_out [BLOCK_SIZE_FLOAT*2];
+float r_buf_out [BLOCK_SIZE_FLOAT*2];
+
+uint8_t callback_state = 0;
 
 typedef struct {
   float a0;
@@ -95,7 +116,7 @@ int CalPeakingLowMid(int inSample);
 int CalPeakingMid(int inSample);
 int CalPeakingHighMid(int inSample);
 int CalPeakingHigh(int inSample);
-void processData(void);
+void applyNewCoeffs(void);
 
 // void addFsuffix(void);
 
@@ -145,9 +166,19 @@ int main(void)
   HAL_UART_Receive_IT(&huart1, rx_buffer, sizeof(rx_buffer)); // Start UART receive
 
   // Set default filter coefficients
-  parseAndStoreCoeffs("Reset");
+  // parseAndStoreCoeffs("Reset");
 
-  HAL_I2SEx_TransmitReceive_DMA (&hi2s2, (uint16_t *) txBuf, (uint16_t *) rxBuf, AUDIO_BUFFER_SIZE);
+  // Start I2S communication
+
+  //init IIR structure
+  arm_biquad_cascade_df1_init_f32 ( &iirsettings_l, 1, &iir_coeffs[0], &iir_l_state[0]);
+  arm_biquad_cascade_df1_init_f32 ( &iirsettings_r, 1, &iir_coeffs[0], &iir_r_state[0]);
+
+  //start i2s with 2048 samples transmission => 4096*u16 words
+  HAL_I2SEx_TransmitReceive_DMA (&hi2s2, txBuf, rxBuf, BLOCK_SIZE_U16);
+
+  int offset_r_ptr;
+  int offset_w_ptr, w_ptr;
 
   /* USER CODE END 2 */
 
@@ -158,13 +189,59 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    if (dataReadyFlag) {
-      processData();
-      dataReadyFlag = 0;
-    }
+  
     // Blink the LED while working
     // HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2);
     // HAL_Delay(1000);
+
+    if (callback_state != 0) {
+
+		  //decide if it was half or cplt callback
+		  if (callback_state == 1)   {
+			  	  offset_r_ptr = 0;
+			  	  offset_w_ptr = 0;
+			  	  w_ptr = 0;
+			  }
+
+		  else if (callback_state == 2) {
+			  offset_r_ptr = BLOCK_SIZE_U16;
+			  offset_w_ptr = BLOCK_SIZE_FLOAT;
+			  w_ptr = BLOCK_SIZE_FLOAT;
+		  }
+
+
+		  //restore input sample buffer to float array
+		  for (int i=offset_r_ptr; i<offset_r_ptr+BLOCK_SIZE_U16; i=i+4) {
+			  l_buf_in[w_ptr] = (float) ((int) (rxBuf[i]<<16)|rxBuf[i+1]);
+			  r_buf_in[w_ptr] = (float) ((int) (rxBuf[i+2]<<16)|rxBuf[i+3]);
+			  w_ptr++;
+		  }
+
+
+		  //process IIR
+		  arm_biquad_cascade_df1_f32 (&iirsettings_l, &l_buf_in[offset_w_ptr], &l_buf_out[offset_w_ptr],BLOCK_SIZE_FLOAT);
+		  arm_biquad_cascade_df1_f32 (&iirsettings_r, &r_buf_in[offset_w_ptr], &r_buf_out[offset_w_ptr],BLOCK_SIZE_FLOAT);
+
+      //bypass
+      // for (int i=offset_w_ptr; i<offset_w_ptr+BLOCK_SIZE_FLOAT; i++) {
+      //   l_buf_out[i] = l_buf_in[i];
+      //   r_buf_out[i] = r_buf_in[i];
+      // }
+
+		  //restore processed float-array to output sample-buffer
+		  w_ptr = offset_w_ptr;
+
+		  for (int i=offset_r_ptr; i<offset_r_ptr+BLOCK_SIZE_U16; i=i+4) {
+				txBuf[i] =  (((int)l_buf_out[w_ptr])>>16)&0xFFFF;
+				txBuf[i+1] = ((int)l_buf_out[w_ptr])&0xFFFF;
+				txBuf[i+2] = (((int)r_buf_out[w_ptr])>>16)&0xFFFF;
+				txBuf[i+3] = ((int)r_buf_out[w_ptr])&0xFFFF;
+				w_ptr++;
+		  }
+
+		  callback_state = 0;
+
+	  }
   }
   /* USER CODE END 3 */
 }
@@ -357,6 +434,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
   isConfigComplete = false;
   parseAndStoreCoeffs((char *)rx_buffer); // Parse the received data
+  applyNewCoeffs(); // Apply the new coefficients to the IIR filter
   isConfigComplete = true;
   memset(rx_buffer, 0, sizeof(rx_buffer)); // Clear the buffer
   HAL_UART_Receive_IT(&huart1, rx_buffer, sizeof(rx_buffer)); // Start the next receive
@@ -437,38 +515,18 @@ void parseAndStoreCoeffs(char *rx_buffer) {
     }
 }
 
-// void addFsuffix(void) {
-//   lowBandCoeffs.a0 = lowBandCoeffs.a0 * 1.0f;
-//   lowBandCoeffs.a1 = lowBandCoeffs.a1 * 1.0f;
-//   lowBandCoeffs.a2 = lowBandCoeffs.a2 * 1.0f;
-//   lowBandCoeffs.b0 = lowBandCoeffs.b0 * 1.0f;
-//   lowBandCoeffs.b1 = lowBandCoeffs.b1 * 1.0f;
-//   lowBandCoeffs.b2 = lowBandCoeffs.b2 * 1.0f;
-//   midLowCoeffs.a0 = midLowCoeffs.a0 * 1.0f;
-//   midLowCoeffs.a1 = midLowCoeffs.a1 * 1.0f;
-//   midLowCoeffs.a2 = midLowCoeffs.a2 * 1.0f;
-//   midLowCoeffs.b0 = midLowCoeffs.b0 * 1.0f;
-//   midLowCoeffs.b1 = midLowCoeffs.b1 * 1.0f;
-//   midLowCoeffs.b2 = midLowCoeffs.b2 * 1.0f;
-//   midBandCoeffs.a0 = midBandCoeffs.a0 * 1.0f;
-//   midBandCoeffs.a1 = midBandCoeffs.a1 * 1.0f;
-//   midBandCoeffs.a2 = midBandCoeffs.a2 * 1.0f;
-//   midBandCoeffs.b0 = midBandCoeffs.b0 * 1.0f;
-//   midBandCoeffs.b1 = midBandCoeffs.b1 * 1.0f;
-//   midBandCoeffs.b2 = midBandCoeffs.b2 * 1.0f;
-//   midHighCoeffs.a0 = midHighCoeffs.a0 * 1.0f;
-//   midHighCoeffs.a1 = midHighCoeffs.a1 * 1.0f;
-//   midHighCoeffs.a2 = midHighCoeffs.a2 * 1.0f;
-//   midHighCoeffs.b0 = midHighCoeffs.b0 * 1.0f;
-//   midHighCoeffs.b1 = midHighCoeffs.b1 * 1.0f;
-//   midHighCoeffs.b2 = midHighCoeffs.b2 * 1.0f;
-//   highBandCoeffs.a0 = highBandCoeffs.a0 * 1.0f;
-//   highBandCoeffs.a1 = highBandCoeffs.a1 * 1.0f;
-//   highBandCoeffs.a2 = highBandCoeffs.a2 * 1.0f;
-//   highBandCoeffs.b0 = highBandCoeffs.b0 * 1.0f;
-//   highBandCoeffs.b1 = highBandCoeffs.b1 * 1.0f;
-//   highBandCoeffs.b2 = highBandCoeffs.b2 * 1.0f;
-// }
+void applyNewCoeffs(void) {
+    // Apply the new coefficients to the IIR filter
+    iir_coeffs[0] = lowBandCoeffs.a0;
+    iir_coeffs[1] = lowBandCoeffs.a1;
+    iir_coeffs[2] = lowBandCoeffs.a2;
+    iir_coeffs[3] = -lowBandCoeffs.b1;
+    iir_coeffs[4] = -lowBandCoeffs.b2;
+
+    // Reinitialize the IIR filter settings with updated coefficients
+    arm_biquad_cascade_df1_init_f32(&iirsettings_l, 1, &iir_coeffs[0], &iir_l_state[0]);
+    arm_biquad_cascade_df1_init_f32(&iirsettings_r, 1, &iir_coeffs[0], &iir_r_state[0]);
+}
 
 int CalPeakingLow(int inSample) {
   if (isConfigComplete == 0) {
@@ -571,135 +629,13 @@ int CalPeakingHigh(int inSample) {
 }
 
 void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
-  if (isConfigComplete == 1) {
-    // for (int i = 0; i < AUDIO_BUFFER_SIZE/2; i+=4) {
-    //   printf("Half i = %d\n", i);
-    //   //restore signed 24 bit sample from 16-bit buffers to 32-bit 
-    //   int lSample = (int) (rxBuf[i]<<16)|rxBuf[i+1];
-    //   int rSample = (int) (rxBuf[i+2]<<16)|rxBuf[i+3];
-
-    //   //run HP on left channel and LP on right channel
-    //   // lSample = Calc_IIR(lSample);
-    //   // rSample = Calc_IIR(rSample);
-
-    //   rSample = CalPeakingLow(rSample);
-    //   rSample = CalPeakingLowMid(rSample);
-    //   lSample = CalPeakingLow(lSample);
-    //   lSample = CalPeakingLowMid(lSample);
-
-    //   //restore to buffer
-    //   txBuf[i] = (lSample>>16)&0xFFFF;
-    //   txBuf[i+1] = lSample&0xFFFF;
-    //   txBuf[i+2] = (rSample>>16)&0xFFFF;
-    //   txBuf[i+3] = rSample&0xFFFF;
-    // }
-
-    // // fixed the buffer
-    // int lSample = (int) (rxBuf[0]<<16)|rxBuf[1];
-    // int rSample = (int) (rxBuf[2]<<16)|rxBuf[3];
-
-    // //run HP on left channel and LP on right channel
-    // // lSample = Calc_IIR(lSample);
-    // // rSample = Calc_IIR(rSample);
-
-    // rSample = CalPeakingLow(rSample);
-    // rSample = CalPeakingLowMid(rSample);
-    // lSample = CalPeakingLow(lSample);
-    // lSample = CalPeakingLowMid(lSample);
-
-    // //restore to buffer
-    // txBuf[0] = (lSample>>16)&0xFFFF;
-    // txBuf[1] = lSample&0xFFFF;
-    // txBuf[2] = (rSample>>16)&0xFFFF;
-    // txBuf[3] = rSample&0xFFFF;
-
-    // Double buffer method
-    inBufPtr = &rxBuf[0];
-    outBufPtr = &txBuf[0];
-    dataReadyFlag = true;
-  }
+  callback_state = 1;
 }
 
 void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s){
-	//restore signed 24 bit sample from 16-bit buffers
-  if (isConfigComplete == 1) {
-    // for (int i = AUDIO_BUFFER_SIZE/2; i < AUDIO_BUFFER_SIZE; i+=4) {
-    //   printf("Full i = %d\n", i);
-    //   //restore signed 24 bit sample from 16-bit buffers to 32-bit 
-    //   int lSample = (int) (rxBuf[i]<<16)|rxBuf[i+1];
-    //   int rSample = (int) (rxBuf[i+2]<<16)|rxBuf[i+3];
-
-    //   //run HP on left channel and LP on right channel
-    //   // lSample = Calc_IIR(lSample);
-    //   // rSample = Calc_IIR(rSample);
-    //   rSample = CalPeakingLow(rSample);
-    //   rSample = CalPeakingLowMid(rSample);
-    //   lSample = CalPeakingLow(lSample);
-    //   lSample = CalPeakingLowMid(lSample);
-
-    //   //restore to buffer
-    //   txBuf[i] = (lSample>>16)&0xFFFF;
-    //   txBuf[i+1] = lSample&0xFFFF;
-    //   txBuf[i+2] = (rSample>>16)&0xFFFF;
-    //   txBuf[i+3] = rSample&0xFFFF;
-    // }
-    
-    // // fixed the buffer
-    // int lSample = (int) (rxBuf[4]<<16)|rxBuf[5];
-    // int rSample = (int) (rxBuf[6]<<16)|rxBuf[7];
-
-    // //run HP on left channel and LP on right channel
-    // // lSample = Calc_IIR(lSample);
-    // // rSample = Calc_IIR(rSample);
-    // rSample = CalPeakingLow(rSample);
-    // rSample = CalPeakingLowMid(rSample);
-    // lSample = CalPeakingLow(lSample);
-    // lSample = CalPeakingLowMid(lSample);
-
-    // //restore to buffer
-    // txBuf[4] = (lSample>>16)&0xFFFF;
-    // txBuf[5] = lSample&0xFFFF;
-    // txBuf[6] = (rSample>>16)&0xFFFF;
-    // txBuf[7] = rSample&0xFFFF;
-
-    // Double buffer method
-    inBufPtr = &rxBuf[AUDIO_BUFFER_SIZE/2];
-    outBufPtr = &txBuf[AUDIO_BUFFER_SIZE/2];
-    dataReadyFlag = true;
-  }
+  callback_state = 2;
 }
 
-void processData() {
-  static int leftIn, leftOut, rightIn, rightOut;
-
-  for (uint8_t n = 0; n < AUDIO_BUFFER_SIZE - 1; n += 2) {
-
-    // Restore signed 24 bit sample from 16-bit buffers to 32-bit
-    leftIn = (float) ((inBufPtr[n] << 16) | inBufPtr[n + 1]);
-    rightIn = (float) ((inBufPtr[n + 2] << 16) | inBufPtr[n + 3]);
-
-    // Run HP on left channel and LP on right channel
-    // leftOut = CalPeakingLow(leftIn);
-    // leftOut = CalPeakingLowMid(leftOut);
-    // leftOut = CalPeakingMid(leftOut);
-    // leftOut = CalPeakingHighMid(leftOut);
-    // leftOut = CalPeakingHigh(leftOut);
-
-    // rightOut = CalPeakingLow(rightIn);
-    // rightOut = CalPeakingLowMid(rightOut);
-    // rightOut = CalPeakingMid(rightOut);
-    // rightOut = CalPeakingHighMid(rightOut);
-    // rightOut = CalPeakingHigh(rightOut);
-
-    leftOut = leftIn;
-    rightOut = rightIn;
-    // Restore to buffer
-    outBufPtr[n] = (int16_t) ((leftOut >> 16) & 0xFFFF);
-    outBufPtr[n + 1] = (int16_t) (leftOut & 0xFFFF);
-    outBufPtr[n + 2] = (int16_t) ((rightOut >> 16) & 0xFFFF);
-    outBufPtr[n + 3] = (int16_t) (rightOut & 0xFFFF);
-  }
-}
 /* USER CODE END 4 */
 
 /**
