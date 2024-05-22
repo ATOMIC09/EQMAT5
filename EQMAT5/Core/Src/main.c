@@ -77,13 +77,45 @@ uint8_t isConfigComplete = true;
 float iir_l_state [4];
 float iir_r_state [4];
 
-//IIR low-pass, fs=48kHz, f_cut=1kHz, q=0.707
-float iir_coeffs [5] = {
-				0.997840f,
-				-1.994824f,
-				0.996994f,
-				1.994824f,
-				-0.994834
+//IIR coefficient array
+float iir_coeffs_low [5] = {
+				1.000000f,
+				-1.996722f,
+				0.996733f,
+				1.996722f,
+				-0.996733
+};
+
+float iir_coeffs_lowmid [5] = {
+        1.000000f,
+        -1.986825f,
+        0.986996f,
+        1.98683f,
+        -0.986996
+};
+
+float iir_coeffs_mid [5] = {
+        1.000000f,
+        -1.897381f,
+        0.906562f,
+        1.897381f,
+        -0.906562
+};
+
+float iir_coeffs_highmid [5] = {
+        0.999999f,
+        -1.787234f,
+        0.822248f,
+        1.787234f,
+        -0.822248
+};
+
+float iir_coeffs_high [5] = {
+        0.999999f,
+        -1.216444f,
+        0.533295f,
+        1.216444f,
+        -0.533295
 };
 
 uint16_t rxBuf[BLOCK_SIZE_U16*2];
@@ -111,12 +143,7 @@ FilterCoeffs midHighCoeffs;
 FilterCoeffs highBandCoeffs;
 
 void parseAndStoreCoeffs(char *rx_buffer);
-int CalPeakingLow(int inSample);
-int CalPeakingLowMid(int inSample);
-int CalPeakingMid(int inSample);
-int CalPeakingHighMid(int inSample);
-int CalPeakingHigh(int inSample);
-void applyNewCoeffs(void);
+void applyNewCoeffs(char *band);
 
 // void addFsuffix(void);
 
@@ -171,8 +198,16 @@ int main(void)
   // Start I2S communication
 
   //init IIR structure
-  arm_biquad_cascade_df1_init_f32 ( &iirsettings_l, 1, &iir_coeffs[0], &iir_l_state[0]);
-  arm_biquad_cascade_df1_init_f32 ( &iirsettings_r, 1, &iir_coeffs[0], &iir_r_state[0]);
+  arm_biquad_cascade_df1_init_f32 ( &iirsettings_l, 1, &iir_coeffs_low[0], &iir_l_state[0]);
+  arm_biquad_cascade_df1_init_f32 ( &iirsettings_r, 1, &iir_coeffs_low[0], &iir_r_state[0]);
+  arm_biquad_cascade_df1_init_f32 ( &iirsettings_l, 1, &iir_coeffs_lowmid[0], &iir_l_state[0]);
+  arm_biquad_cascade_df1_init_f32 ( &iirsettings_r, 1, &iir_coeffs_lowmid[0], &iir_r_state[0]);
+  arm_biquad_cascade_df1_init_f32 ( &iirsettings_l, 1, &iir_coeffs_mid[0], &iir_l_state[0]);
+  arm_biquad_cascade_df1_init_f32 ( &iirsettings_r, 1, &iir_coeffs_mid[0], &iir_r_state[0]);
+  arm_biquad_cascade_df1_init_f32 ( &iirsettings_l, 1, &iir_coeffs_highmid[0], &iir_l_state[0]);
+  arm_biquad_cascade_df1_init_f32 ( &iirsettings_r, 1, &iir_coeffs_highmid[0], &iir_r_state[0]);
+  arm_biquad_cascade_df1_init_f32 ( &iirsettings_l, 1, &iir_coeffs_high[0], &iir_l_state[0]);
+  arm_biquad_cascade_df1_init_f32 ( &iirsettings_r, 1, &iir_coeffs_high[0], &iir_r_state[0]);
 
   //start i2s with 2048 samples transmission => 4096*u16 words
   HAL_I2SEx_TransmitReceive_DMA (&hi2s2, txBuf, rxBuf, BLOCK_SIZE_U16);
@@ -434,7 +469,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
   isConfigComplete = false;
   parseAndStoreCoeffs((char *)rx_buffer); // Parse the received data
-  applyNewCoeffs(); // Apply the new coefficients to the IIR filter
   isConfigComplete = true;
   memset(rx_buffer, 0, sizeof(rx_buffer)); // Clear the buffer
   HAL_UART_Receive_IT(&huart1, rx_buffer, sizeof(rx_buffer)); // Start the next receive
@@ -449,6 +483,7 @@ void parseAndStoreCoeffs(char *rx_buffer) {
         printf("Parsed LowMid: %f %f %f %f %f %f\n",
                 midLowCoeffs.a0, midLowCoeffs.a1, midLowCoeffs.a2, 
                 midLowCoeffs.b0, midLowCoeffs.b1, midLowCoeffs.b2);
+        applyNewCoeffs("LowMid");
     } else if (strncmp(rx_buffer, "HighMid", 7) == 0) {
         sscanf(rx_buffer, "HighMid %f %f %f %f %f %f", 
                &midHighCoeffs.a0, &midHighCoeffs.a1, &midHighCoeffs.a2, 
@@ -456,6 +491,7 @@ void parseAndStoreCoeffs(char *rx_buffer) {
         printf("Parsed HighMid: %f %f %f %f %f %f\n",
                 midHighCoeffs.a0, midHighCoeffs.a1, midHighCoeffs.a2, 
                 midHighCoeffs.b0, midHighCoeffs.b1, midHighCoeffs.b2);
+        applyNewCoeffs("HighMid");
     } else if (strncmp(rx_buffer, "High", 4) == 0) {
         sscanf(rx_buffer, "High %f %f %f %f %f %f", 
                &highBandCoeffs.a0, &highBandCoeffs.a1, &highBandCoeffs.a2, 
@@ -463,6 +499,7 @@ void parseAndStoreCoeffs(char *rx_buffer) {
         printf("Parsed High: %f %f %f %f %f %f\n",
                 highBandCoeffs.a0, highBandCoeffs.a1, highBandCoeffs.a2, 
                 highBandCoeffs.b0, highBandCoeffs.b1, highBandCoeffs.b2);
+        applyNewCoeffs("High");
     } else if (strncmp(rx_buffer, "Mid", 3) == 0) {
         sscanf(rx_buffer, "Mid %f %f %f %f %f %f", 
                &midBandCoeffs.a0, &midBandCoeffs.a1, &midBandCoeffs.a2, 
@@ -470,6 +507,7 @@ void parseAndStoreCoeffs(char *rx_buffer) {
         printf("Parsed Mid: %f %f %f %f %f %f\n",
                 midBandCoeffs.a0, midBandCoeffs.a1, midBandCoeffs.a2, 
                 midBandCoeffs.b0, midBandCoeffs.b1, midBandCoeffs.b2);
+        applyNewCoeffs("Mid");
     } else if (strncmp(rx_buffer, "Low", 3) == 0) {
         sscanf(rx_buffer, "Low %f %f %f %f %f %f", 
                &lowBandCoeffs.a0, &lowBandCoeffs.a1, &lowBandCoeffs.a2, 
@@ -477,6 +515,7 @@ void parseAndStoreCoeffs(char *rx_buffer) {
         printf("Parsed Low: %f %f %f %f %f %f\n", 
                lowBandCoeffs.a0, lowBandCoeffs.a1, lowBandCoeffs.a2, 
                lowBandCoeffs.b0, lowBandCoeffs.b1, lowBandCoeffs.b2);
+        applyNewCoeffs("Low");
     } else if (strncmp(rx_buffer, "Reset", 5) == 0) {
         lowBandCoeffs.a0 = 1.000000f;
         lowBandCoeffs.a1 = -1.9967221676279703f;
@@ -515,117 +554,51 @@ void parseAndStoreCoeffs(char *rx_buffer) {
     }
 }
 
-void applyNewCoeffs(void) {
+void applyNewCoeffs(char *band) {
     // Apply the new coefficients to the IIR filter
-    iir_coeffs[0] = lowBandCoeffs.a0;
-    iir_coeffs[1] = lowBandCoeffs.a1;
-    iir_coeffs[2] = lowBandCoeffs.a2;
-    iir_coeffs[3] = -lowBandCoeffs.b1;
-    iir_coeffs[4] = -lowBandCoeffs.b2;
-
-    // Reinitialize the IIR filter settings with updated coefficients
-    arm_biquad_cascade_df1_init_f32(&iirsettings_l, 1, &iir_coeffs[0], &iir_l_state[0]);
-    arm_biquad_cascade_df1_init_f32(&iirsettings_r, 1, &iir_coeffs[0], &iir_r_state[0]);
-}
-
-int CalPeakingLow(int inSample) {
-  if (isConfigComplete == 0) {
-    return inSample;
-  }
-  
-  float inSampleF = (float)inSample;
-  float outSampleF =
-      (lowBandCoeffs.a0 * inSampleF
-      + lowBandCoeffs.a1 * in_z1
-      + lowBandCoeffs.a2 * in_z2
-      - lowBandCoeffs.b1 * out_z1
-      - lowBandCoeffs.b2 * out_z2);// / lowBandCoeffs.b0; // Phil lab = *, EasyEQ = /
-  in_z2 = in_z1;
-  in_z1 = inSampleF;
-  out_z2 = out_z1;
-  out_z1 = outSampleF;
-  
-  return (int) outSampleF;
-}
-
-int CalPeakingLowMid(int inSample) {
-  if (isConfigComplete == 0) {
-    return inSample;
-  }
-  
-  float inSampleF = (float)inSample;
-  float outSampleF =
-      (midLowCoeffs.a0 * inSampleF
-      + midLowCoeffs.a1 * in_z1
-      + midLowCoeffs.a2 * in_z2
-      - midLowCoeffs.b1 * out_z1
-      - midLowCoeffs.b2 * out_z2);// / midLowCoeffs.b0; // Phil lab = *, EasyEQ = /
-  in_z2 = in_z1;
-  in_z1 = inSampleF;
-  out_z2 = out_z1;
-  out_z1 = outSampleF;
-
-  return (int) outSampleF;
-}
-
-int CalPeakingMid(int inSample) {
-  if (isConfigComplete == 0) {
-    return inSample;
-  }
-  
-  float inSampleF = (float)inSample;
-  float outSampleF =
-      (midBandCoeffs.a0 * inSampleF
-      + midBandCoeffs.a1 * in_z1
-      + midBandCoeffs.a2 * in_z2
-      - midBandCoeffs.b1 * out_z1
-      - midBandCoeffs.b2 * out_z2);// / midBandCoeffs.b0; // Phil lab = *, EasyEQ = /
-  in_z2 = in_z1;
-  in_z1 = inSampleF;
-  out_z2 = out_z1;
-  out_z1 = outSampleF;
-  
-  return (int) outSampleF;
-}
-
-int CalPeakingHighMid(int inSample) {
-  if (isConfigComplete == 0) {
-    return inSample;
-  }
-  
-  float inSampleF = (float)inSample;
-  float outSampleF =
-      (midHighCoeffs.a0 * inSampleF
-      + midHighCoeffs.a1 * in_z1
-      + midHighCoeffs.a2 * in_z2
-      - midHighCoeffs.b1 * out_z1
-      - midHighCoeffs.b2 * out_z2);// / midHighCoeffs.b0; // Phil lab = *, EasyEQ = /
-  in_z2 = in_z1;
-  in_z1 = inSampleF;
-  out_z2 = out_z1;
-  out_z1 = outSampleF;
-  
-  return (int) outSampleF;
-}
-
-int CalPeakingHigh(int inSample) {
-  if (isConfigComplete == 0) {
-    return inSample;
-  }
-  
-  float inSampleF = (float)inSample;
-  float outSampleF =
-      (highBandCoeffs.a0 * inSampleF
-      + highBandCoeffs.a1 * in_z1
-      + highBandCoeffs.a2 * in_z2
-      - highBandCoeffs.b1 * out_z1
-      - highBandCoeffs.b2 * out_z2);// / highBandCoeffs.b0; // Phil lab = *, EasyEQ = /
-  in_z2 = in_z1;
-  in_z1 = inSampleF;
-  out_z2 = out_z1;
-  out_z1 = outSampleF;
-  
-  return (int) outSampleF;
+    if (strncmp(band, "LowMid", 6) == 0) {
+        iir_coeffs_lowmid[0] = midLowCoeffs.a0;
+        iir_coeffs_lowmid[1] = midLowCoeffs.a1;
+        iir_coeffs_lowmid[2] = midLowCoeffs.a2;
+        iir_coeffs_lowmid[3] = -midLowCoeffs.b1;
+        iir_coeffs_lowmid[4] = -midLowCoeffs.b2;
+        arm_biquad_cascade_df1_init_f32(&iirsettings_l, 1, &iir_coeffs_lowmid[0], &iir_l_state[0]);
+        arm_biquad_cascade_df1_init_f32(&iirsettings_r, 1, &iir_coeffs_lowmid[0], &iir_r_state[0]);
+    } else if (strncmp(band, "HighMid", 7) == 0) {
+        iir_coeffs_highmid[0] = midHighCoeffs.a0;
+        iir_coeffs_highmid[1] = midHighCoeffs.a1;
+        iir_coeffs_highmid[2] = midHighCoeffs.a2;
+        iir_coeffs_highmid[3] = -midHighCoeffs.b1;
+        iir_coeffs_highmid[4] = -midHighCoeffs.b2;
+        arm_biquad_cascade_df1_init_f32(&iirsettings_l, 1, &iir_coeffs_highmid[0], &iir_l_state[0]);
+        arm_biquad_cascade_df1_init_f32(&iirsettings_r, 1, &iir_coeffs_highmid[0], &iir_r_state[0]);
+    } else if (strncmp(band, "High", 4) == 0) {
+        iir_coeffs_high[0] = highBandCoeffs.a0;
+        iir_coeffs_high[1] = highBandCoeffs.a1;
+        iir_coeffs_high[2] = highBandCoeffs.a2;
+        iir_coeffs_high[3] = -highBandCoeffs.b1;
+        iir_coeffs_high[4] = -highBandCoeffs.b2;
+        arm_biquad_cascade_df1_init_f32(&iirsettings_l, 1, &iir_coeffs_high[0], &iir_l_state[0]);
+        arm_biquad_cascade_df1_init_f32(&iirsettings_r, 1, &iir_coeffs_high[0], &iir_r_state[0]);
+    } else if (strncmp(band, "Mid", 3) == 0) {
+        iir_coeffs_mid[0] = midBandCoeffs.a0;
+        iir_coeffs_mid[1] = midBandCoeffs.a1;
+        iir_coeffs_mid[2] = midBandCoeffs.a2;
+        iir_coeffs_mid[3] = -midBandCoeffs.b1;
+        iir_coeffs_mid[4] = -midBandCoeffs.b2;
+        arm_biquad_cascade_df1_init_f32(&iirsettings_l, 1, &iir_coeffs_mid[0], &iir_l_state[0]);
+        arm_biquad_cascade_df1_init_f32(&iirsettings_r, 1, &iir_coeffs_mid[0], &iir_r_state[0]);
+    } else if (strncmp(band, "Low", 3) == 0) {
+        iir_coeffs_low[0] = lowBandCoeffs.a0;
+        iir_coeffs_low[1] = lowBandCoeffs.a1;
+        iir_coeffs_low[2] = lowBandCoeffs.a2;
+        iir_coeffs_low[3] = -lowBandCoeffs.b1;
+        iir_coeffs_low[4] = -lowBandCoeffs.b2;
+        arm_biquad_cascade_df1_init_f32(&iirsettings_l, 1, &iir_coeffs_low[0], &iir_l_state[0]);
+        arm_biquad_cascade_df1_init_f32(&iirsettings_r, 1, &iir_coeffs_low[0], &iir_r_state[0]);
+    } else {
+        printf("Invalid band\n");
+    }
 }
 
 void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
