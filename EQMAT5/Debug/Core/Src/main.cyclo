@@ -8,7 +8,7 @@
 ../Core/Src/main.c:448:5:_write	2
 ../Core/Src/main.c:460:6:HAL_UART_RxCpltCallback	1
 ../Core/Src/main.c:477:6:parseAndStoreCoeffs	7
-../Core/Src/main.c:557:6:applyNewCoeffs	6
-../Core/Src/main.c:604:6:HAL_I2SEx_TxRxHalfCpltCallback	1
-../Core/Src/main.c:608:6:HAL_I2SEx_TxRxCpltCallback	1
-../Core/Src/main.c:618:6:Error_Handler	1
+../Core/Src/main.c:561:6:applyNewCoeffs	6
+../Core/Src/main.c:608:6:HAL_I2SEx_TxRxHalfCpltCallback	1
+../Core/Src/main.c:612:6:HAL_I2SEx_TxRxCpltCallback	1
+../Core/Src/main.c:622:6:Error_Handler	1

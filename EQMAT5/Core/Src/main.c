@@ -547,7 +547,11 @@ void parseAndStoreCoeffs(char *rx_buffer) {
         highBandCoeffs.b0 = 1.0f;
         highBandCoeffs.b1 = -1.2164444497980702f;
         highBandCoeffs.b2 = 0.5332946721463616f;
-
+        applyNewCoeffs("LowMid");
+        applyNewCoeffs("HighMid");
+        applyNewCoeffs("High");
+        applyNewCoeffs("Mid");
+        applyNewCoeffs("Low");
         printf("Coefficients reset!\n");
     } else {
         printf("Invalid parameter\n");
