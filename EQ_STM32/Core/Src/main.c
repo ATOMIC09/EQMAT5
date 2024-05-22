@@ -71,7 +71,7 @@ uint8_t callback_state = 0;
 arm_biquad_casd_df1_inst_f32 iirsettings_l, iirsettings_r;
 
 //IIR coefficient array
-// Default settings: Q = 0.1, Fs = 96kHz, Gain = 0
+// Default settings: Q = 1.0, Fs = 96kHz, Gain = 0
 float iir_coeffs_low [5] = {
 				1.000000f,
 				-1.996722f,
@@ -84,7 +84,7 @@ float iir_coeffs_lowmid [5] = {
         1.000000f,
         -1.986825f,
         0.986996f,
-        1.98683f,
+        1.986825f,
         -0.986996
 };
 
@@ -97,7 +97,7 @@ float iir_coeffs_mid [5] = {
 };
 
 float iir_coeffs_highmid [5] = {
-        0.999999f,
+        1.000000f,
         -1.787234f,
         0.822248f,
         1.787234f,
@@ -105,7 +105,7 @@ float iir_coeffs_highmid [5] = {
 };
 
 float iir_coeffs_high [5] = {
-        0.999999f,
+        1.000000f,
         -1.216444f,
         0.533295f,
         1.216444f,
