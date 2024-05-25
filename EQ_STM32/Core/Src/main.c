@@ -59,8 +59,16 @@ uint8_t tx_buffer[17] = "Serial Ready!\n\r";
 uint8_t rx_buffer[65];
 
 // I2S
-float iir_l_state [4];
-float iir_r_state [4];
+float iir_l_low_state [4];
+float iir_r_low_state [4];
+float iir_l_lowmid_state [4];
+float iir_r_lowmid_state [4];
+float iir_l_mid_state [4];
+float iir_r_mid_state [4];
+float iir_l_highmid_state [4];
+float iir_r_highmid_state [4];
+float iir_l_high_state [4];
+float iir_r_high_state [4];
 uint16_t rxBuf[BLOCK_SIZE_U16*2];
 uint16_t txBuf[BLOCK_SIZE_U16*2];
 float l_buf_in [BLOCK_SIZE_FLOAT*2];
@@ -68,7 +76,11 @@ float r_buf_in [BLOCK_SIZE_FLOAT*2];
 float l_buf_out [BLOCK_SIZE_FLOAT*2];
 float r_buf_out [BLOCK_SIZE_FLOAT*2];
 uint8_t callback_state = 0;
-arm_biquad_casd_df1_inst_f32 iirsettings_l, iirsettings_r;
+arm_biquad_casd_df1_inst_f32 iirsettings_l_low, iirsettings_r_low;
+arm_biquad_casd_df1_inst_f32 iirsettings_l_lowmid, iirsettings_r_lowmid;
+arm_biquad_casd_df1_inst_f32 iirsettings_l_mid, iirsettings_r_mid;
+arm_biquad_casd_df1_inst_f32 iirsettings_l_highmid, iirsettings_r_highmid;
+arm_biquad_casd_df1_inst_f32 iirsettings_l_high, iirsettings_r_high;
 
 //IIR coefficient array
 // Default settings: Q = 1.0, Fs = 96kHz, Gain = 0
@@ -171,16 +183,16 @@ int main(void)
   
   // Start I2S communication
   // Initialize IIR filter coefficients
-  arm_biquad_cascade_df1_init_f32 ( &iirsettings_l, 1, &iir_coeffs_low[0], &iir_l_state[0]);
-  arm_biquad_cascade_df1_init_f32 ( &iirsettings_r, 1, &iir_coeffs_low[0], &iir_r_state[0]);
-  arm_biquad_cascade_df1_init_f32 ( &iirsettings_l, 1, &iir_coeffs_lowmid[0], &iir_l_state[0]);
-  arm_biquad_cascade_df1_init_f32 ( &iirsettings_r, 1, &iir_coeffs_lowmid[0], &iir_r_state[0]);
-  arm_biquad_cascade_df1_init_f32 ( &iirsettings_l, 1, &iir_coeffs_mid[0], &iir_l_state[0]);
-  arm_biquad_cascade_df1_init_f32 ( &iirsettings_r, 1, &iir_coeffs_mid[0], &iir_r_state[0]);
-  arm_biquad_cascade_df1_init_f32 ( &iirsettings_l, 1, &iir_coeffs_highmid[0], &iir_l_state[0]);
-  arm_biquad_cascade_df1_init_f32 ( &iirsettings_r, 1, &iir_coeffs_highmid[0], &iir_r_state[0]);
-  arm_biquad_cascade_df1_init_f32 ( &iirsettings_l, 1, &iir_coeffs_high[0], &iir_l_state[0]);
-  arm_biquad_cascade_df1_init_f32 ( &iirsettings_r, 1, &iir_coeffs_high[0], &iir_r_state[0]);
+  arm_biquad_cascade_df1_init_f32 ( &iirsettings_l_low, 1, &iir_coeffs_low[0], &iir_l_low_state[0]);
+  arm_biquad_cascade_df1_init_f32 ( &iirsettings_r_low, 1, &iir_coeffs_low[0], &iir_r_low_state[0]);
+  arm_biquad_cascade_df1_init_f32 ( &iirsettings_l_lowmid, 1, &iir_coeffs_lowmid[0], &iir_l_lowmid_state[0]);
+  arm_biquad_cascade_df1_init_f32 ( &iirsettings_r_lowmid, 1, &iir_coeffs_lowmid[0], &iir_r_lowmid_state[0]);
+  arm_biquad_cascade_df1_init_f32 ( &iirsettings_l_mid, 1, &iir_coeffs_mid[0], &iir_l_mid_state[0]);
+  arm_biquad_cascade_df1_init_f32 ( &iirsettings_r_mid, 1, &iir_coeffs_mid[0], &iir_r_mid_state[0]);
+  arm_biquad_cascade_df1_init_f32 ( &iirsettings_l_highmid, 1, &iir_coeffs_highmid[0], &iir_l_highmid_state[0]);
+  arm_biquad_cascade_df1_init_f32 ( &iirsettings_r_highmid, 1, &iir_coeffs_highmid[0], &iir_r_highmid_state[0]);
+  arm_biquad_cascade_df1_init_f32 ( &iirsettings_l_high, 1, &iir_coeffs_high[0], &iir_l_high_state[0]);
+  arm_biquad_cascade_df1_init_f32 ( &iirsettings_r_high, 1, &iir_coeffs_high[0], &iir_r_high_state[0]);
 
   // Start I2S with 2048 samples transmission -> 4096*u16 words
   HAL_I2SEx_TransmitReceive_DMA (&hi2s2, txBuf, rxBuf, BLOCK_SIZE_U16);
@@ -223,10 +235,18 @@ int main(void)
 
 
 		  // Process IIR
-		  arm_biquad_cascade_df1_f32 (&iirsettings_l, &l_buf_in[offset_w_ptr], &l_buf_out[offset_w_ptr],BLOCK_SIZE_FLOAT);
-		  arm_biquad_cascade_df1_f32 (&iirsettings_r, &r_buf_in[offset_w_ptr], &r_buf_out[offset_w_ptr],BLOCK_SIZE_FLOAT);
+		  arm_biquad_cascade_df1_f32 (&iirsettings_l_low, &l_buf_in[offset_w_ptr], &l_buf_out[offset_w_ptr],BLOCK_SIZE_FLOAT);
+		  arm_biquad_cascade_df1_f32 (&iirsettings_r_low, &r_buf_in[offset_w_ptr], &r_buf_out[offset_w_ptr],BLOCK_SIZE_FLOAT);
+      arm_biquad_cascade_df1_f32 (&iirsettings_l_lowmid, &l_buf_out[offset_w_ptr], &l_buf_out[offset_w_ptr],BLOCK_SIZE_FLOAT);
+      arm_biquad_cascade_df1_f32 (&iirsettings_r_lowmid, &r_buf_out[offset_w_ptr], &r_buf_out[offset_w_ptr],BLOCK_SIZE_FLOAT);
+      arm_biquad_cascade_df1_f32 (&iirsettings_l_mid, &l_buf_out[offset_w_ptr], &l_buf_out[offset_w_ptr],BLOCK_SIZE_FLOAT);
+      arm_biquad_cascade_df1_f32 (&iirsettings_r_mid, &r_buf_out[offset_w_ptr], &r_buf_out[offset_w_ptr],BLOCK_SIZE_FLOAT);
+      arm_biquad_cascade_df1_f32 (&iirsettings_l_highmid, &l_buf_out[offset_w_ptr], &l_buf_out[offset_w_ptr],BLOCK_SIZE_FLOAT);
+      arm_biquad_cascade_df1_f32 (&iirsettings_r_highmid, &r_buf_out[offset_w_ptr], &r_buf_out[offset_w_ptr],BLOCK_SIZE_FLOAT);
+      arm_biquad_cascade_df1_f32 (&iirsettings_l_high, &l_buf_out[offset_w_ptr], &l_buf_out[offset_w_ptr],BLOCK_SIZE_FLOAT);
+      arm_biquad_cascade_df1_f32 (&iirsettings_r_high, &r_buf_out[offset_w_ptr], &r_buf_out[offset_w_ptr],BLOCK_SIZE_FLOAT);
 
-      // Bypass filter
+      // Bypass the filter
       // for (int i=offset_w_ptr; i<offset_w_ptr+BLOCK_SIZE_FLOAT; i++) {
       //   l_buf_out[i] = l_buf_in[i];
       //   r_buf_out[i] = r_buf_in[i];
@@ -447,32 +467,22 @@ static void parseAndStoreCoeffs(char *rx_buffer) {
         sscanf(rx_buffer, "LowMid %f %f %f %f %f",
                 &iir_coeffs_lowmid[0], &iir_coeffs_lowmid[1], &iir_coeffs_lowmid[2], &iir_coeffs_lowmid[3], &iir_coeffs_lowmid[4]);
         printf("Parsed LowMid : %f %f %f %f %f\n", iir_coeffs_lowmid[0], iir_coeffs_lowmid[1], iir_coeffs_lowmid[2], iir_coeffs_lowmid[3], iir_coeffs_lowmid[4]);
-        arm_biquad_cascade_df1_init_f32 (&iirsettings_l, 1, &iir_coeffs_lowmid[0], &iir_l_state[0]);
-        arm_biquad_cascade_df1_init_f32 (&iirsettings_r, 1, &iir_coeffs_lowmid[0], &iir_r_state[0]); 
     } else if (strncmp(rx_buffer, "HighMid", 7) == 0) {
         sscanf(rx_buffer, "HighMid %f %f %f %f %f",
                 &iir_coeffs_highmid[0], &iir_coeffs_highmid[1], &iir_coeffs_highmid[2], &iir_coeffs_highmid[3], &iir_coeffs_highmid[4]);
         printf("Parsed HighMid : %f %f %f %f %f\n", iir_coeffs_highmid[0], iir_coeffs_highmid[1], iir_coeffs_highmid[2], iir_coeffs_highmid[3], iir_coeffs_highmid[4]);
-        arm_biquad_cascade_df1_init_f32 (&iirsettings_l, 1, &iir_coeffs_highmid[0], &iir_l_state[0]);
-        arm_biquad_cascade_df1_init_f32 (&iirsettings_r, 1, &iir_coeffs_highmid[0], &iir_r_state[0]); 
     } else if (strncmp(rx_buffer, "Mid", 3) == 0) {
         sscanf(rx_buffer, "Mid %f %f %f %f %f",
                 &iir_coeffs_mid[0], &iir_coeffs_mid[1], &iir_coeffs_mid[2], &iir_coeffs_mid[3], &iir_coeffs_mid[4]);
         printf("Parsed Mid : %f %f %f %f %f\n", iir_coeffs_mid[0], iir_coeffs_mid[1], iir_coeffs_mid[2], iir_coeffs_mid[3], iir_coeffs_mid[4]);
-        arm_biquad_cascade_df1_init_f32 (&iirsettings_l, 1, &iir_coeffs_mid[0], &iir_l_state[0]);
-        arm_biquad_cascade_df1_init_f32 (&iirsettings_r, 1, &iir_coeffs_mid[0], &iir_r_state[0]); 
     } else if (strncmp(rx_buffer, "Low", 3) == 0) {
         sscanf(rx_buffer, "Low %f %f %f %f %f",
                 &iir_coeffs_low[0], &iir_coeffs_low[1], &iir_coeffs_low[2], &iir_coeffs_low[3], &iir_coeffs_low[4]);
         printf("Parsed Low : %f %f %f %f %f\n", iir_coeffs_low[0], iir_coeffs_low[1], iir_coeffs_low[2], iir_coeffs_low[3], iir_coeffs_low[4]);
-        arm_biquad_cascade_df1_init_f32 (&iirsettings_l, 1, &iir_coeffs_low[0], &iir_l_state[0]);
-        arm_biquad_cascade_df1_init_f32 (&iirsettings_r, 1, &iir_coeffs_low[0], &iir_r_state[0]); 
     } else if (strncmp(rx_buffer, "High", 4) == 0) {
         sscanf(rx_buffer, "High %f %f %f %f %f",
                 &iir_coeffs_high[0], &iir_coeffs_high[1], &iir_coeffs_high[2], &iir_coeffs_high[3], &iir_coeffs_high[4]);
         printf("Parsed High : %f %f %f %f %f\n", iir_coeffs_high[0], iir_coeffs_high[1], iir_coeffs_high[2], iir_coeffs_high[3], iir_coeffs_high[4]);
-        arm_biquad_cascade_df1_init_f32 (&iirsettings_l, 1, &iir_coeffs_high[0], &iir_l_state[0]);
-        arm_biquad_cascade_df1_init_f32 (&iirsettings_r, 1, &iir_coeffs_high[0], &iir_r_state[0]);
     } else if (strncmp(rx_buffer, "Reset", 5) == 0) {
         iir_coeffs_low[0] = 1.000000f;
         iir_coeffs_low[1] = -1.996722f;
@@ -504,20 +514,21 @@ static void parseAndStoreCoeffs(char *rx_buffer) {
         iir_coeffs_high[3] = 1.216444f;
         iir_coeffs_high[4] = -0.533295;
 
-        arm_biquad_cascade_df1_init_f32 ( &iirsettings_l, 1, &iir_coeffs_low[0], &iir_l_state[0]);
-        arm_biquad_cascade_df1_init_f32 ( &iirsettings_r, 1, &iir_coeffs_low[0], &iir_r_state[0]);
-        arm_biquad_cascade_df1_init_f32 ( &iirsettings_l, 1, &iir_coeffs_lowmid[0], &iir_l_state[0]);
-        arm_biquad_cascade_df1_init_f32 ( &iirsettings_r, 1, &iir_coeffs_lowmid[0], &iir_r_state[0]);
-        arm_biquad_cascade_df1_init_f32 ( &iirsettings_l, 1, &iir_coeffs_mid[0], &iir_l_state[0]);
-        arm_biquad_cascade_df1_init_f32 ( &iirsettings_r, 1, &iir_coeffs_mid[0], &iir_r_state[0]);
-        arm_biquad_cascade_df1_init_f32 ( &iirsettings_l, 1, &iir_coeffs_highmid[0], &iir_l_state[0]);
-        arm_biquad_cascade_df1_init_f32 ( &iirsettings_r, 1, &iir_coeffs_highmid[0], &iir_r_state[0]);
-        arm_biquad_cascade_df1_init_f32 ( &iirsettings_l, 1, &iir_coeffs_high[0], &iir_l_state[0]);
-        arm_biquad_cascade_df1_init_f32 ( &iirsettings_r, 1, &iir_coeffs_high[0], &iir_r_state[0]);
         printf("Coefficients reset!\n");
     } else {
         printf("Invalid command\n");
     }
+    // Apply the new coefficients
+    arm_biquad_cascade_df1_init_f32 ( &iirsettings_l_low, 1, &iir_coeffs_low[0], &iir_l_low_state[0]);
+    arm_biquad_cascade_df1_init_f32 ( &iirsettings_r_low, 1, &iir_coeffs_low[0], &iir_r_low_state[0]);
+    arm_biquad_cascade_df1_init_f32 ( &iirsettings_l_lowmid, 1, &iir_coeffs_lowmid[0], &iir_l_lowmid_state[0]);
+    arm_biquad_cascade_df1_init_f32 ( &iirsettings_r_lowmid, 1, &iir_coeffs_lowmid[0], &iir_r_lowmid_state[0]);
+    arm_biquad_cascade_df1_init_f32 ( &iirsettings_l_mid, 1, &iir_coeffs_mid[0], &iir_l_mid_state[0]);
+    arm_biquad_cascade_df1_init_f32 ( &iirsettings_r_mid, 1, &iir_coeffs_mid[0], &iir_r_mid_state[0]);
+    arm_biquad_cascade_df1_init_f32 ( &iirsettings_l_highmid, 1, &iir_coeffs_highmid[0], &iir_l_highmid_state[0]);
+    arm_biquad_cascade_df1_init_f32 ( &iirsettings_r_highmid, 1, &iir_coeffs_highmid[0], &iir_r_highmid_state[0]);
+    arm_biquad_cascade_df1_init_f32 ( &iirsettings_l_high, 1, &iir_coeffs_high[0], &iir_l_high_state[0]);
+    arm_biquad_cascade_df1_init_f32 ( &iirsettings_r_high, 1, &iir_coeffs_high[0], &iir_r_high_state[0]);
 }
 
 void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s){
