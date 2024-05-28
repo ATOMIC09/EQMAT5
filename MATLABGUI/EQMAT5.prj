@@ -8,11 +8,11 @@
       <file>${PROJECT_ROOT}\EQMAT5_resources\icon_24.png</file>
       <file>${PROJECT_ROOT}\EQMAT5_resources\icon_16.png</file>
     </param.icons>
-    <param.version>0.3</param.version>
+    <param.version>0.3.0</param.version>
     <param.authnamewatermark>atomic09</param.authnamewatermark>
     <param.email>phutawanchanrueng@gmail.com</param.email>
     <param.company />
-    <param.summary>This is v0.3 Demo</param.summary>
+    <param.summary>This is v0.3.0 Demo</param.summary>
     <param.description>EQMAT5 integrates cutting-edge hardware components, including the STM32F405RTG6 microcontroller, which provides powerful processing capabilities and efficient control over audio signal processing. The module features a PCM1808 analog-to-digital converter (ADC), ensuring high-fidelity audio capture with precise resolution and dynamic range. On the output side, the UDA1334A digital-to-analog converter (DAC) delivers pristine audio playback, maintaining the integrity of the processed audio signals. With its robust hardware foundation, EQMAT5 offers superior performance and reliability, making it an ideal solution for demanding audio processing tasks in a wide range of applications.</param.description>
     <param.screenshot>A:\Downloads\_481b1442-0d03-406d-933d-201f0ad7f06c.jpg</param.screenshot>
     <param.guid />
