@@ -1,5 +1,9 @@
 <div align="center"><h1>แค่พื้นที่ทดสอบโค้ด (〜￣▽￣)〜</h1></div>
 
+## Branches
+- `main` -> แหล่งเก็บโค้ด Final ของโปรเจค
+- `test` -> พื้นที่ทดลองโค้ดก่อนงานจริง
+- 
 ## Development Timeline
 - `test/stm32f4eq` -> เริ่มลองใช้ STM32 กับ Arduino
 - `test/stm32f4eq_test` -> เริ่มลองใช้ STM32CubeIDE
