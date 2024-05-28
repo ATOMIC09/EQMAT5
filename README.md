@@ -1,13 +1,22 @@
-<div align="center"><h1>ที่แห่งนี้ มีแต่โค้ด...และความปวดหัว</h1></div>
+<div align="center"><h1>EQMAT5's Source Code</h1></div>
 
-## Branches
-- `main` -> แหล่งเก็บโค้ด Final ของโปรเจค
-- `test` -> พื้นที่ทดลองโค้ดก่อนงานจริง
+## Description
+การประยุกต์ใช้งาน MATLAB GUI ในการควบคุมการทำงานของ STM32F405 สำหรับการทำ Digital IIR Filter ผ่านโปรโตคอล I2S
 
-## Development Timeline
-- `test/stm32f4eq` -> เริ่มลองใช้ STM32 กับ Arduino
-- `test/stm32f4eq_test` -> เริ่มลองใช้ STM32CubeIDE
-- `test/STM32F405_EQ_Test` -> เริ่มมีเสียงออกแล้ว
-- `test/MATLABGUI` -> GUI ของ MATLAB
-- `test/STM32_EQ` -> เกิดอะไรขึ้นไม่รู้ เสียงมีปัญหาแบบเสียงหายไปเลย แต่สร้างใหม่แล้วหาย
-- `test/EQMAT5` -> เกิดอะไรขึ้นไม่รู้ แต่สร้างใหม่แล้วหาย 2
+## Hardware
+- WeAct STM32F405RGT6
+- PCM1808 ADC
+- UDA1334A DAC
+- ST-Link V2 Programmer
+- FT232RL USB to Serial
+- 3.5mm Audio Cable (DIY)
+
+## Tools
+- STM32CubeIDE v1.15.0
+- MATLAB R2023b
+- Visual Studio Code
+- Git
+
+## Libraries
+- CMSIS
+- HAL
