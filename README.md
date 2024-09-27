@@ -1,7 +1,7 @@
 <div align="center"><h1>EQMAT5's Source Code</h1></div>
 
 ## Description
-การประยุกต์ใช้งาน MATLAB GUI ในการควบคุมการทำงานของ STM32F405 สำหรับการทำ Digital IIR Filter ผ่านโปรโตคอล I2S
+การประยุกต์ใช้งาน MATLAB GUI ในการควบคุมการทำงานของ STM32F405 สำหรับการทำ Digital IIR Filter ผ่านโปรโตคอล I<sup>2</sup>S
 
 ## Hardware
 - WeAct STM32F405RGT6
