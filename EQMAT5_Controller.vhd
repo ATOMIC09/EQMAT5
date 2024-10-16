@@ -1,137 +1,123 @@
-----------------------------------------------------------------------
--- File Downloaded from http://www.nandland.com
-----------------------------------------------------------------------
 library ieee;
-use ieee.std_logic_1164.ALL;
+use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
- 
+use ieee.math_real.all;
+
 entity EQMAT5_Controller is
+    port (
+        CLK : in std_logic;
+        RESET_BTN, APPLY_BTN : in std_logic;
+        switches : in std_logic_vector(7 downto 0); -- Example: 8 switches for 5 gains (FSM controls this)
+        DONE : out std_logic; -- Finished processing all bands
+        a0, a1, a2, b1, b2 : out real -- Biquad coefficients output
+    );
 end EQMAT5_Controller;
- 
-architecture behave of EQMAT5_Controller is
- 
-  component uart_tx is
-    generic (
-      g_CLKS_PER_BIT : integer := 115   -- Needs to be set correctly
-      );
-    port (
-      i_clk       : in  std_logic;
-      i_tx_dv     : in  std_logic;
-      i_tx_byte   : in  std_logic_vector(7 downto 0);
-      o_tx_active : out std_logic;
-      o_tx_serial : out std_logic;
-      o_tx_done   : out std_logic
-      );
-  end component uart_tx;
- 
-  component uart_rx is
-    generic (
-      g_CLKS_PER_BIT : integer := 115   -- Needs to be set correctly
-      );
-    port (
-      i_clk       : in  std_logic;
-      i_rx_serial : in  std_logic;
-      o_rx_dv     : out std_logic;
-      o_rx_byte   : out std_logic_vector(7 downto 0)
-      );
-  end component uart_rx;
- 
-   
-  -- Test Bench uses a 10 MHz Clock
-  -- Want to interface to 115200 baud UART
-  -- 10000000 / 115200 = 87 Clocks Per Bit.
-  constant c_CLKS_PER_BIT : integer := 87;
- 
-  constant c_BIT_PERIOD : time := 8680 ns;
-   
-  signal r_CLOCK     : std_logic                    := '0';
-  signal r_TX_DV     : std_logic                    := '0';
-  signal r_TX_BYTE   : std_logic_vector(7 downto 0) := (others => '0');
-  signal w_TX_SERIAL : std_logic;
-  signal w_TX_DONE   : std_logic;
-  signal w_RX_DV     : std_logic;
-  signal w_RX_BYTE   : std_logic_vector(7 downto 0);
-  signal r_RX_SERIAL : std_logic := '1';
- 
-   
-  -- Low-level byte-write
-  procedure UART_WRITE_BYTE (
-    i_data_in       : in  std_logic_vector(7 downto 0);
-    signal o_serial : out std_logic) is
-  begin
- 
-    -- Send Start Bit
-    o_serial <= '0';
-    wait for c_BIT_PERIOD;
- 
-    -- Send Data Byte
-    for ii in 0 to 7 loop
-      o_serial <= i_data_in(ii);
-      wait for c_BIT_PERIOD;
-    end loop;  -- ii
- 
-    -- Send Stop Bit
-    o_serial <= '1';
-    wait for c_BIT_PERIOD;
-    end UART_WRITE_BYTE;
- 
+
+architecture Behavioral of EQMAT5_Controller is
+    -- Define constant center frequencies for each band
+    constant Fc_Low : real := 50.0;
+    constant Fc_LowMid : real := 200.0;
+    constant Fc_Mid : real := 1500.0;
+    constant Fc_HighMid : real := 3000.0;
+    constant Fc_High : real := 10000.0;
+    constant Fs : real := 96000.0;
+    constant Q : real := 1.0;
+    
+    -- Signals to receive gain values from FSM
+    signal GainLow, GainLowMid, GainMid, GainHighMid, GainHigh : integer;
+
+    -- Internal signals for biquad inputs and outputs
+    signal Fc : real;
+    signal a0_temp, a1_temp, a2_temp, b1_temp, b2_temp : real;
+
+    -- Instantiate FSM (connect to FSM.vhd)
+    component FSM
+        port (
+            CLK : in std_logic;
+            RESET_BTN : in std_logic;
+            APPLY_BTN : in std_logic;
+            switches : in std_logic_vector(7 downto 0);
+            GainLow, GainLowMid, GainMid, GainHighMid, GainHigh : out integer;
+            SHOW_GainLowVar, SHOW_GainLowMidVar, SHOW_GainMidVar, SHOW_GainHighMidVar, SHOW_GainHighVar : out std_logic;
+            DONE : out std_logic
+        );
+    end component;
+    
+    -- Instantiate Biquad (connect to Biquad.vhd)
+    component Biquad
+        port (
+            GainLow, GainLowMid, GainMid, GainHighMid, GainHigh : in integer;
+            Fc, Fs, Q : in real;
+            CLK : in std_logic;
+            a0, a1, a2, b1, b2 : out real
+        );
+    end component;
+
 begin
- 
--- Instantiate UART transmitter 
-UART_TX_INST : uart_tx 
-  generic map (
-    g_CLKS_PER_BIT => c_CLKS_PER_BIT
-      )
-    port map (
-      i_clk       => r_CLOCK,
-      i_tx_dv     => r_TX_DV,
-      i_tx_byte   => r_TX_BYTE,
-      o_tx_active => open,
-      o_tx_serial => w_TX_SERIAL,
-      o_tx_done   => w_TX_DONE
-      );
- 
-  -- Instantiate UART Receiver
-  UART_RX_INST : uart_rx
-    generic map (
-      g_CLKS_PER_BIT => c_CLKS_PER_BIT
-      )
-    port map (
-      i_clk       => r_CLOCK,
-      i_rx_serial => r_RX_SERIAL,
-      o_rx_dv     => w_RX_DV,
-      o_rx_byte   => w_RX_BYTE
-      );
- 
-  r_CLOCK <= not r_CLOCK after 50 ns;
-   
-  process is
-  begin
- 
-    -- Tell the UART to send a command.
-    wait until rising_edge(r_CLOCK);
-    wait until rising_edge(r_CLOCK);
-    r_TX_DV   <= '1';
-    r_TX_BYTE <= X"AB";
-    wait until rising_edge(r_CLOCK);
-    r_TX_DV   <= '0';
-    wait until w_TX_DONE = '1';
- 
-     
-    -- Send a command to the UART
-    wait until rising_edge(r_CLOCK);
-    UART_WRITE_BYTE(X"3F", r_RX_SERIAL);
-    wait until rising_edge(r_CLOCK);
- 
-    -- Check that the correct command was received
-    if w_RX_BYTE = X"3F" then
-      report "Test Passed - Correct Byte Received" severity note;
-    else
-      report "Test Failed - Incorrect Byte Received" severity note;
-    end if;
- 
-    assert false report "Tests Complete" severity failure;
-     
-  end process;
-   
-end behave;
+
+    -- FSM instantiation: pass the gain values to FSM
+    FSM_inst : FSM
+        port map (
+            CLK => CLK,
+            RESET_BTN => RESET_BTN,
+            APPLY_BTN => APPLY_BTN,
+            switches => switches,
+            GainLow => GainLow,
+            GainLowMid => GainLowMid,
+            GainMid => GainMid,
+            GainHighMid => GainHighMid,
+            GainHigh => GainHigh,
+            SHOW_GainLowVar => open,
+            SHOW_GainLowMidVar => open,
+            SHOW_GainMidVar => open,
+            SHOW_GainHighMidVar => open,
+            SHOW_GainHighVar => open,
+            DONE => DONE
+        );
+
+    -- Process to select the correct Fc based on the state from FSM
+    process(CLK)
+    begin
+        if rising_edge(CLK) then
+            -- Depending on which gain is being adjusted, assign corresponding Fc
+            if GainLow /= 0 then
+                Fc <= Fc_Low;
+            elsif GainLowMid /= 0 then
+                Fc <= Fc_LowMid;
+            elsif GainMid /= 0 then
+                Fc <= Fc_Mid;
+            elsif GainHighMid /= 0 then
+                Fc <= Fc_HighMid;
+            elsif GainHigh /= 0 then
+                Fc <= Fc_High;
+            end if;
+        end if;
+    end process;
+
+    -- Biquad instantiation: calculate coefficients based on current gain and Fc
+    Biquad_inst : Biquad
+        port map (
+            GainLow => GainLow,
+            GainLowMid => GainLowMid,
+            GainMid => GainMid,
+            GainHighMid => GainHighMid,
+            GainHigh => GainHigh,
+            Fc => Fc,
+            Fs => Fs,
+            Q => Q,
+            CLK => CLK,
+            a0 => a0_temp,
+            a1 => a1_temp,
+            a2 => a2_temp,
+            b1 => b1_temp,
+            b2 => b2_temp
+        );
+
+    -- Assign the calculated coefficients to output ports
+    a0 <= a0_temp;
+    a1 <= a1_temp;
+    a2 <= a2_temp;
+    b1 <= b1_temp;
+    b2 <= b2_temp;
+
+end Behavioral;
